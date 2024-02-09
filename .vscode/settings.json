@@ -1,0 +1,29 @@
+{
+    "python.envFile": "${workspaceFolder}/.env",
+    
+    // --- python
+    // lint
+    "flake8.args": [
+        "--max-line-length=119",
+        "--ignore=E203"  // E203 whitespace before ':'
+    ],
+    // format
+    "[python]": {
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        },
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    "black-formatter.args": [
+        "--line-length=119"
+    ],
+    // type annotation 
+    "python.analysis.typeCheckingMode": "basic",
+    // test
+    "python.testing.pytestArgs": [
+        "tests"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+}
