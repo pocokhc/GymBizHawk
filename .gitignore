@@ -5,6 +5,11 @@ _*/
 
 BizHawk*/
 
+# --- vscode
+.vscode/
+!.vscode/extensions.json
+!.vscode/setting.json
+
 
 #--- default python ignore ---
 
