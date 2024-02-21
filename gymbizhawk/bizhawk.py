@@ -5,7 +5,7 @@ import os
 import selectors
 import socket
 import subprocess
-from typing import List, Optional, Union
+from typing import Any, List, Optional, Union
 
 import cv2
 import gymnasium as gym
@@ -17,29 +17,30 @@ logger = logging.getLogger(__name__)
 
 gymnasium.envs.registration.register(
     id="BizHawk-v0",
-    entry_point=__name__ + ":BizHawk",
+    entry_point=__name__ + ":BizHawkEnv",
+    nondeterministic=True,
 )
 
 
-class SpeedTypes(enum.Enum):
-    NORMAL = enum.auto()
-    FAST = enum.auto()
+class ModeTypes(enum.Enum):
     DEBUG = enum.auto()
+    TRAIN = enum.auto()
+    EVAL = enum.auto()
 
     @staticmethod
     def get_names() -> List[str]:
-        return [i.name for i in SpeedTypes]
+        return [i.name for i in ModeTypes]
 
     @staticmethod
-    def from_str(mode: Union[str, "SpeedTypes"]) -> "SpeedTypes":
+    def from_str(mode: Union[str, "ModeTypes"]) -> "ModeTypes":
         if isinstance(mode, str):
             mode = mode.upper()
-            names = SpeedTypes.get_names()
+            names = ModeTypes.get_names()
             assert mode in names, "Unknown type '{}'. type list is [{}].".format(
                 mode,
                 ",".join(names),
             )
-            mode = SpeedTypes[mode]
+            mode = ModeTypes[mode]
         return mode
 
 
@@ -69,38 +70,115 @@ class BizHawkError(Exception):
     pass
 
 
-class BizHawk(gym.Env):
+class BizHawkEnv(gym.Env):
     metadata = {"render_modes": ["rgb_array"]}
 
+    def __init__(self, render_mode: Optional[str] = None, **kwargs):
+        self.bizhawk = BizHawk(**kwargs)
+        self.render_mode = render_mode
+
+        self.bizhawk.boot()
+        self.action_space = self.bizhawk.action_space
+        self.observation_space = self.bizhawk.observation_space
+
+        self.backup_count = 0
+        self.screen = None
+
+    def close(self):
+        self.bizhawk.close()
+
+    def reset(self):
+        state = self.bizhawk.reset()
+        return state, {}
+
+    def step(self, action: list):
+        state, reward, done = self.bizhawk.step(action)
+        return state, reward, done, False, {}
+
+    def render(self):  # super
+        if self.render_mode != "rgb_array":
+            print("You are calling render method without specifying any render mode.")
+            return
+
+        try:
+            import pygame
+        except ImportError as e:
+            raise BizHawkError("pygame is not installed, run `pip install pygame`") from e
+        if self.screen is None:
+            pygame.init()
+            self.screen = pygame.Surface((self.bizhawk.image_shape[1], self.bizhawk.image_shape[0]))
+            self.clock = pygame.time.Clock()
+
+        if self.bizhawk.step_img is None:
+            img = self.bizhawk.fetch_image(self.bizhawk.image_shape)
+        else:
+            img = self.bizhawk.step_img
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = img.swapaxes(0, 1)
+        img = pygame.surfarray.make_surface(img)
+        self.screen.blit(img, (0, 0))
+        return np.transpose(np.array(pygame.surfarray.pixels3d(self.screen)), axes=(1, 0, 2))
+
+    # ------------------------------------------
+    # SRL
+    # ------------------------------------------
+    def get_invalid_actions(self):
+        return self.bizhawk.get_invalid_actions()
+
+    def backup(self) -> Any:
+        b = self.backup_count
+        self.backup_count += 1
+        self.bizhawk.send(f"save _t{b}.dat")
+        return b
+
+    def restore(self, data: Any) -> None:
+        self.bizhawk.send(f"load _t{data}.dat")
+
+
+class BizHawk:
     def __init__(
         self,
         bizhawk_dir: str,
-        lua_path: str,
-        speed: Union[SpeedTypes, str] = SpeedTypes.DEBUG,
+        lua_file: str,
+        mode: Union[ModeTypes, str] = ModeTypes.EVAL,
         observation_type: Union[ObservationTypes, str] = ObservationTypes.IMAGE,
         lua_init_str: str = "",
         socket_ip: str = "127.0.0.1",
         socket_port: int = 30000,
         socket_buffer_size: int = 1024 * 1024,
         socket_timeout=None,
-        render_mode: Optional[str] = None,  # super
     ):
-        super().__init__()
-        self.speed = SpeedTypes.from_str(speed)
+        """_summary_
+
+        Args:
+            bizhawk_dir (str): _description_
+            lua_file (str): _description_
+            mode (Union[ModeTypes, str], optional): _description_. Defaults to ModeTypes.TEST.
+            observation_type (Union[ObservationTypes, str], optional): _description_. Defaults to ObservationTypes.IMAGE.
+            lua_init_str (str, optional): _description_. Defaults to "".
+            socket_ip (str, optional): _description_. Defaults to "127.0.0.1".
+            socket_port (int, optional): _description_. Defaults to 30000.
+            socket_buffer_size (int, optional): _description_. Defaults to 1024*1024.
+            socket_timeout (_type_, optional): _description_. Defaults to None.
+
+        Raises:
+            BizHawkError: _description_
+        """
+        self.bizhawk_dir = os.path.abspath(bizhawk_dir)
+        self.lua_file = os.path.abspath(lua_file)
+        self.mode = ModeTypes.from_str(mode)
         self.observation_type = ObservationTypes.from_str(observation_type)
         self.lua_init_str = lua_init_str
-        self.render_mode = render_mode
-        self.screen = None
 
         self._send_count = 0
-        self.bizhawk = None
+        self.emu = None
+        self.image_shape = (0, 0)
+        self.platform = ""
 
         # -- init
         self.server = SocketServer(socket_ip, socket_port, socket_buffer_size, socket_timeout)
-        self._boot_emulator(bizhawk_dir, lua_path, socket_ip, self.server.port)
-        if not self.server.connect_wait():
-            raise BizHawkError("connection fail.")
-        self._1st_communication()
+        self.socket_ip = socket_ip
+        self.socket_port = self.server.port
 
     def __enter__(self):
         return self
@@ -112,132 +190,130 @@ class BizHawk(gym.Env):
         self.close()
 
     def close(self):
-        if self.speed == SpeedTypes.DEBUG:
-            self._send("frameadvance")
-            input("closing. continue>")
-        self._send("close")
+        if self.mode == ModeTypes.DEBUG:
+            self.send("frameadvance")
+            input("closing. continue> ")
+        self.send("close")
         self.server.close()
-        if self.bizhawk is not None:
+        if self.emu is not None:
             logger.info("bizhawk closing.")
             try:
-                self.bizhawk.wait(timeout=1)
+                self.emu.wait(timeout=1)
             except subprocess.TimeoutExpired:
                 pass
             finally:
-                self.bizhawk.kill()
-                self.bizhawk = None
+                self.emu.kill()
+                self.emu = None
 
-    def _boot_emulator(
-        self,
-        bizhawk_dir: str,
-        lua_path: str,
-        socket_ip,
-        socket_port,
-    ):
-        bizhawk_dir = os.path.abspath(bizhawk_dir)
-        lua_path = os.path.abspath(lua_path)
-
-        # --- path
-        bizhawk_exe_path = os.path.join(bizhawk_dir, "EmuHawk.exe")
+    def boot(self):
 
         # --- run bizhawk
-        cmd = bizhawk_exe_path
+        cmd = os.path.join(self.bizhawk_dir, "EmuHawk.exe")
         cmd += " --luaconsole"
-        cmd += " --socket_ip={}".format(socket_ip)
-        cmd += " --socket_port={}".format(socket_port)
-        cmd += " --lua={}".format(lua_path)
+        cmd += " --socket_ip={}".format(self.socket_ip)
+        cmd += " --socket_port={}".format(self.socket_port)
+        cmd += " --lua={}".format(self.lua_file)
         logger.debug("bizhawk run: {}".format(cmd))
-        self.bizhawk = subprocess.Popen(cmd)
+        self.emu = subprocess.Popen(cmd)
 
-    # -----------------------
-    # Communication
-    # -----------------------
-    def _1st_communication(self):
+        # --- connect
+        if not self.server.connect_wait():
+            raise BizHawkError("connection fail.")
 
         # --- 1st send
-        s = "a {} {} {} {}".format(
-            self.speed.name,
+        s = "a|{}|{}|{}|{}".format(
+            self.mode.name,
             self.observation_type.name,
             "_" if self.lua_init_str == "" else self.lua_init_str,
             "_",
         )
-        self._send(s)
+        self.send(s)
 
         # --- 1st recv
-        d = self.server.recv(enable_decode=True)
+        d = self.recv(enable_split=True)
         if d is None:
             logger.info("1st recv fail.")
             self.close()
             return
-        self.base_img_shape = ()
-        self.used_img = False
-        if self.observation_type in [ObservationTypes.IMAGE, ObservationTypes.BOTH]:
-            img = self._recv_image()
-            self.base_img_shape = img.shape
-            self.used_img = True
+        img = self._recv_image()
+        self.image_shape = img.shape
+        logger.info(f"image shape: {self.image_shape}]")
 
-        d = str(d)
-        d = d.split("|")
-        self.action_types = [str(x) for x in d[0].split(",") if x.strip() != ""]
-        logger.info(f"action      : {self.action_types}")
+        self.platform = d[0].strip()
+        logger.info(f"platform   : {self.platform}")
+        self.action_types = [str(x.strip()) for x in d[1].split(",") if x.strip() != ""]
+        logger.info(f"action     : {self.action_types}")
         if self.observation_type in [ObservationTypes.VALUE, ObservationTypes.BOTH]:
-            obs = [int(x) for x in d[1].split(",") if x.strip() != ""]
-            obs_size = obs[0]
-            obs_low = obs[1]
-            obs_high = obs[2]
-            logger.info(f"observation : {obs_size} [{obs_low},{obs_high}]")
+            d2 = d[2].split(",")
+            obs_size = int(d2[0].strip())
+            obs_type = d2[1].strip()
+            logger.info(f"observation: {obs_size}, {obs_type}")
+        self.invalid_actions = []
 
         # --- space
-        acts = []
-        for a in self.action_types:
-            if a == "bool":
-                acts.append(gym.spaces.Discrete(2))
-            elif a.startswith("int"):
-                s = a.split(" ")
-                acts.append(gym.spaces.Box(int(s[0]), int(s[1]), (1,), dtype=np.int32))
-            elif a.startswith("float"):
-                s = a.split(" ")
-                acts.append(gym.spaces.Box(float(s[0]), float(s[1]), (1,), dtype=np.float32))
-            else:
-                raise BizHawkError(a)
+        acts = [self._decode_space_type(a) for a in self.action_types]
         self.action_space = gym.spaces.Tuple(acts)
         if self.observation_type == ObservationTypes.VALUE:
-            self.observation_space = gym.spaces.Box(obs_low, obs_high, shape=(obs_size,))
+            self.observation_space = self._decode_space_type(obs_type, shape=(obs_size,))
         elif self.observation_type == ObservationTypes.IMAGE:
-            self.observation_space = gym.spaces.Box(0, 255, shape=self.base_img_shape, dtype=np.uint8)
+            self.observation_space = gym.spaces.Box(0, 255, shape=self.image_shape, dtype=np.uint8)
         elif self.observation_type == ObservationTypes.BOTH:
             self.observation_space = gym.spaces.Tuple(
                 [
-                    gym.spaces.Box(0, 255, shape=self.base_img_shape, dtype=np.uint8),
-                    gym.spaces.Box(obs_low, obs_high, shape=(obs_size,)),
+                    gym.spaces.Box(0, 255, shape=self.image_shape, dtype=np.uint8),
+                    self._decode_space_type(obs_type, shape=(obs_size,)),
                 ]
             )
-        logger.info(f"action     : {self.action_space}")
-        logger.info(f"observation: {self.observation_space}]")
+        logger.info(f"action space     : {self.action_space}")
+        logger.info(f"observation space: {self.observation_space}]")
 
-        # --- render
-        if self.render_mode == "rgb_array":
-            if not self.used_img:
-                self._send("image")
-                img = self._recv_image()
-                self.used_img = True
-                self.base_img_shape = img.shape
+    def _decode_space_type(self, type_str: str, shape=(1,)) -> gym.spaces.Space:
+        if type_str == "bool":  # "bool"
+            return gym.spaces.Discrete(2)
+        elif type_str.startswith("int"):  # "int 0 255"
+            s = type_str.split(" ")
+            if len(s) == 1:
+                low = -np.inf
+                high = np.inf
+                return gym.spaces.Box(low, high, shape, dtype=np.int64)
+            elif shape == (1,):
+                low = int(s[1], 0)
+                high = int(s[2], 0)
+                return gym.spaces.Discrete(high - low + 1, start=low)
+            else:
+                low = int(s[1], 0)
+                high = int(s[2], 0)
+                return gym.spaces.Box(low, high, shape, dtype=np.int64)
+        elif type_str.startswith("float"):  # "float 0.0 1.0"
+            s = type_str.split(" ")
+            if len(s) == 1:
+                low = -np.inf
+                high = np.inf
+            else:
+                low = int(s[1], 0)
+                high = int(s[2], 0)
+            return gym.spaces.Box(low, high, shape, dtype=np.float32)
+        else:
+            raise BizHawkError(type_str)
 
-        return
-
-    def _send(self, data: str) -> None:
+    # -----------------------
+    # Communication
+    # -----------------------
+    def send(self, data: str) -> None:
         self._send_count += 1
         # Since BizHawk 2.6.2, all responses must be of the form $"{msg.Length:D} {msg}"
         # i.e. prefixed with the length in base-10 and a space.
         data = f"{len(data)} {data}"
         self.server.send(data)
 
-    def _recv(self) -> list[str]:
+    def recv(self, enable_split: bool = False):
         data = self.server.recv(enable_decode=True)
         if data is None:
             raise BizHawkError()
         data = str(data).strip()
-        return [v.strip() for v in data.split("|") if v.strip() != ""]
+        if enable_split:
+            return [v.strip() for v in data.split("|")]
+        return data
 
     def _recv_image(self, resize_shape=None) -> np.ndarray:
         img_raw = self.server.recv(enable_decode=False)
@@ -253,107 +329,117 @@ class BizHawk(gym.Env):
             logger.debug(f"recv img: {old_shape} -> {img.shape}")
         return img
 
-    def _convert_observation(self, obs_str: str) -> np.ndarray:
+    def _decode_observation(self, obs_str: str) -> np.ndarray:
+        # "s1 s2 s3 s4" スペース区切り
         return np.array([float(o) for o in obs_str.split(" ")])
+
+    def _decode_invalid_actions(self, inv_act_str: str):
+        #  アクションセット毎の配列（なので2次元配列）
+        # 区切りは"_"と","、最後に_が入る
+        # float: 未定義
+        invalid_actions = []
+        for inv_act_str in inv_act_str.split("_"):
+            inv_act_str = inv_act_str.strip()
+            if inv_act_str == "":
+                continue
+            inv_act_str_split = inv_act_str.split(",")
+            inv_act = []
+            for i, t in enumerate(self.action_types):
+                val_str = inv_act_str_split[i].strip()
+                if t == "bool":
+                    inv_act.append(True if val_str == "1" else False)
+                elif t.startswith("int"):
+                    inv_act.append(int(val_str, 0))
+                else:
+                    inv_act.append(0)
+            invalid_actions.append(inv_act)
+        return invalid_actions
+
+    def fetch_image(self, resize_shape=None) -> np.ndarray:
+        self.send("image")
+        return self._recv_image(resize_shape)
+
+    def _recv_extend_observation(self, obs_str):
+        # (recv1): s + observation
+        #    sは元で受信する
+        #    observationはimageの場合は""
+        # recv2: image
+        #    imageとbothの場合のみ送信
+        img = None
+        if self.observation_type == ObservationTypes.VALUE or self.observation_type == ObservationTypes.BOTH:
+            obs = self._decode_observation(obs_str)
+            logger.debug(f"{self._send_count} obs {obs.shape}: {str(obs):100s}")
+
+        if self.observation_type == ObservationTypes.IMAGE or self.observation_type == ObservationTypes.BOTH:
+            img = self._recv_image(self.image_shape)
+            logger.debug(f"{self._send_count} img {img.shape}")
+
+        if self.observation_type == ObservationTypes.VALUE:
+            state = obs
+        elif self.observation_type == ObservationTypes.IMAGE:
+            state = img
+        elif self.observation_type == ObservationTypes.BOTH:
+            state = [img, obs]
+        return state, img
 
     # -----------------------------
     # gym
     # -----------------------------
-    def reset(self):  # super
-        self.step_img = None
-        if self.observation_type == ObservationTypes.VALUE:
-            self._send("rv")
-            obs_str = self._recv()[0]
-            state = self._convert_observation(obs_str)
-            logger.debug(f"{self._send_count} state {state.shape}: {str(state):100s}")
-        elif self.observation_type == ObservationTypes.IMAGE:
-            self._send("ri")
-            state = self.step_img = self._recv_image(self.base_img_shape)
-            logger.debug(f"{self._send_count} state {state.shape}")
-        elif self.observation_type == ObservationTypes.BOTH:
-            self._send("rb")
-            obs_str = self._recv()[0]
-            obs = self._convert_observation(obs_str)
-            self.step_img = self._recv_image(self.base_img_shape)
-            state = [self.step_img, obs]
-            logger.debug(f"{self._send_count} state [{self.step_img.shape}, {obs.shape}: {str(obs):100s}]")
-        else:
-            raise BizHawkError(self.observation_type)
+    def reset(self):
+        # --- reset
+        # send: "r"
+        # recv:  invalid_actions "|" observation
+        self.send("r")
+        recv_str_list = self.recv(enable_split=True)
+        self.invalid_actions = self._decode_invalid_actions(recv_str_list[0])
+        state, img = self._recv_extend_observation(recv_str_list[1])
+        self.step_img = img
+        return state
 
-        return state, {}
-
-    def step(self, action: list):  # super
+    def step(self, action: list):
+        # --- 1. send "s act1 act2 act3" スペース区切り
         if isinstance(action, np.ndarray):
             action = action.tolist()
         if isinstance(action, tuple):
             action = list(action)
+        _a = []
         for i, t in enumerate(self.action_types):
+            a = action[i]
+            if isinstance(a, np.ndarray):
+                a = a.tolist()
+            if isinstance(a, tuple):
+                a = list(a)
+            if isinstance(a, list):
+                a = a[0]
             if t == "bool":
-                action[i] = str(action[i])
+                _a.append("1" if a else "0")
             elif t.startswith("int"):
-                action[i] = str(action[i])
+                _a.append(str(a))
             elif t.startswith("float"):
-                action[i] = str(action[i])
+                _a.append(str(a))
             else:
-                action[i] = str(action[i])
+                _a.append(str(a))
 
-        act_str = " ".join(action)
-        if self.observation_type == ObservationTypes.VALUE:
-            self._send(f"sv {act_str}")
-        elif self.observation_type == ObservationTypes.IMAGE:
-            self._send(f"si {act_str}")
-        elif self.observation_type == ObservationTypes.BOTH:
-            self._send(f"sb {act_str}")
-        else:
-            raise BizHawkError(self.observation_type)
+        act_str = " ".join(_a)
+        self.send(f"s {act_str}")
 
-        # --- recv
-        vals = self._recv()
-        reward = float(vals[0])
-        done = True if vals[1] == "1" else False
+        # --- 3. recv
+        # invalid_actions "|" reward "|" done "|" observation
+        # reward     : float
+        # done       : "0" or "1"
+        recv_str_list = self.recv(enable_split=True)
+        self.invalid_actions = self._decode_invalid_actions(recv_str_list[0])
+        reward = float(recv_str_list[1])
+        done = True if recv_str_list[2] == "1" else False
+        state, img = self._recv_extend_observation(recv_str_list[3])
+        self.step_img = img
+        return state, reward, done
 
-        self.step_img = None
-        if self.observation_type == ObservationTypes.VALUE:
-            state = self._convert_observation(vals[2])
-            logger.debug(f"{self._send_count} state {state.shape}: {str(state):100s}")
-        elif self.observation_type == ObservationTypes.IMAGE:
-            state = self.step_img = self._recv_image(self.base_img_shape)
-            logger.debug(f"{self._send_count} state {state.shape}")
-        elif self.observation_type == ObservationTypes.BOTH:
-            obs = self._convert_observation(vals[2])
-            self.step_img = self._recv_image(self.base_img_shape)
-            state = [self.step_img, obs]
-            logger.debug(f"{self._send_count} state [{self.step_img.shape}, {obs.shape}: {str(obs):100s}]")
-        else:
-            raise BizHawkError(self.observation_type)
-
-        return state, reward, done, False, {}
-
-    def render(self):  # super
-        if self.render_mode != "rgb_array":
-            print("You are calling render method without specifying any render mode.")
-            return
-
-        try:
-            import pygame
-        except ImportError as e:
-            raise BizHawkError("pygame is not installed, run `pip install pygame`") from e
-        if self.screen is None:
-            pygame.init()
-            self.screen = pygame.Surface((self.base_img_shape[1], self.base_img_shape[0]))
-            self.clock = pygame.time.Clock()
-
-        if self.step_img is None:
-            self._send("image")
-            self.step_img = self._recv_image(self.base_img_shape)
-        img = cv2.cvtColor(self.step_img, cv2.COLOR_BGR2RGB)
-        img = img.swapaxes(0, 1)
-        img = pygame.surfarray.make_surface(img)
-        self.screen.blit(img, (0, 0))
-        return np.transpose(np.array(pygame.surfarray.pixels3d(self.screen)), axes=(1, 0, 2))
-
-    def get_valid_actions(self):
-        return self.valid_actions
+    # -----------------------------
+    # other
+    # -----------------------------
+    def get_invalid_actions(self):
+        return self.invalid_actions
 
 
 class SocketServer:

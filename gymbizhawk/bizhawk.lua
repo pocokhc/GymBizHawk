@@ -1,19 +1,26 @@
-
 ---------------------------
 -- common functions
 ---------------------------
-local function eval(inStr)
-    inStr = "_a = " .. inStr 
-    assert(loadstring(inStr))()
-    return _a
+local function eval(code)
+    local chunk, err = load(code)
+    if chunk then
+        local success, result = pcall(chunk)
+        if success then
+            return result
+        else
+            return nil, "Runtime error: " .. result
+        end
+    else
+        return nil, "Compilation error: " .. err
+    end
 end
 
 local function split(str, ts)
     if ts == nil then return {} end
 
-    local t = {} ; 
-    i=1
-    for s in string.gmatch(str, "([^"..ts.."]+)") do
+    local t = {};
+    local i = 1
+    for s in string.gmatch(str, "([^" .. ts .. "]+)") do
         t[i] = s
         i = i + 1
     end
@@ -21,7 +28,7 @@ local function split(str, ts)
     return t
 end
 
-function startswith(str, start)
+local function startswith(str, start)
     return string.sub(str, 1, string.len(start)) == start
 end
 
@@ -34,12 +41,26 @@ GymEnv.new = function(log_path)
     this.log_path = log_path
     this.processor = nil
     this.mode = ""
+    this.observation_type = ""
+    this.backup_data = {}
+
+    if this.log_path ~= "" then
+        local f = io.open(this.log_path, "w")
+        if f ~= nil then
+            f:close()
+        end
+    end
 
     this.close = function(self)
         self:send("close")
     end
 
     this.run = function(self, processor)
+        -- bizahawk外から実行した場合は何もしない
+        if emu == nil then
+            return
+        end
+
         ---- processor
         if processor == nil then
             self:log_info("processor is not found.")
@@ -51,15 +72,12 @@ GymEnv.new = function(log_path)
         ---- open rom
         client.openrom(self.processor.ROM)
         if gameinfo.getromname() == "Null" then
-            self:log_info("Open the ROM and then execute.")
+            self:log_info("ROM could not be opened. " .. self.processor.ROM)
             self:close()
             return
         end
         self.platform = emu.getsystemid()
         client.pause()
-
-        savestate.loadslot(2)
-        
 
         ---- 1st recv
         local recv = self:recv_wait()
@@ -69,73 +87,78 @@ GymEnv.new = function(log_path)
             return
         end
         self:log_info("1st recv: " .. recv)
-        
+
         -- ある文字列から必要な部分一気にまとめて取り出す
-        self.speed, observation_type, py_init_str, a = string.match(recv, "a (.-) (.-) (.-) (.+)")
+        local py_init_str
+        local a
+        self.mode, self.observation_type, py_init_str, a = string.match(recv, "a|(.-)|(.-)|(.-)|(.+)")
+        if py_init_str == "_" then
+            py_init_str = ""
+        end
 
         ------ init processor
         self.processor:init(self, py_init_str)
         self.ACTION = self.processor.ACTION
         if self.ACTION == nil then
-            self:log_info("Action is not defined: " .. self.platform)
+            self:log_info("ACTION is not defined.")
+            self:close()
+            return
+        end
+        self.OBSERVATION = self.processor.OBSERVATION
+        if self.OBSERVATION == nil then
+            self:log_info("OBSERVATION is not defined.")
             self:close()
             return
         end
 
-        self:log_info("Verstion  :" .. client.getversion())
-        self:log_info("Game      :" .. gameinfo.getromname())
-        gamehash = gameinfo.getromhash()
-        self:log_info("Hash      :" .. gamehash .. ((gamehash == self.processor.HASH) and " same" or (", miss " .. self.processor.HASH)))
-        self:log_info("Platform  :" .. self.platform)
-        self:log_info("Processor :" .. self.processor.NAME)
-        self:log_info("Speed     :" .. self.speed)
+        self:log_info("Verstion :" .. client.getversion())
+        self:log_info("Game     :" .. gameinfo.getromname())
+        self:log_info("ROM      :" .. self.processor.ROM)
+        local gamehash = gameinfo.getromhash()
+        self:log_info("Hash     :" ..
+            gamehash .. ((gamehash == self.processor.HASH) and " match" or (", not match " .. self.processor.HASH)))
+        self:log_info("Platform :" .. self.platform)
+        self:log_info("Processor:" .. self.processor.NAME)
+        self:log_info("Mode     :" .. self.mode)
         local s = "" .. #self.ACTION .. " "
-        for i=1, #self.ACTION do
-            s = s .. self.ACTION[i] .. " "
+        for i = 1, #self.ACTION do
+            s = s .. self.ACTION[i] .. ","
         end
         self:log_info("action    :" .. s)
         self:log_info("log       :" .. self.log_path)
 
-        ---- 1st send
-        local s = ""
-        for i=1, #self.ACTION do
-            s = s .. self.ACTION[i] .. ","
-        end
-        if observation_type == "VALUE" or observation_type == "BOTH" then
-            local obs_len = 0
-            if self.processor.OBSERVATION_LENGTH == nil then
-                local d = self.processor:getObservation()
-                obs_len = #d
-            else
-                obs_len = self.processor.OBSERVATION_LENGTH
-            end
-            local obs_low = (self.processor.OBSERVATION_LOW == nil) and 0 or self.processor.OBSERVATION_LOW
-            local obs_high = (self.processor.OBSERVATION_HIGH == nil) and 255 or self.processor.OBSERVATION_HIGH
-            self:log_info("obs       :" .. obs_len .. " [" .. obs_low .. "," .. obs_high .. "]")
-            s = s .. "|"
-            s = s .. obs_len
-            s = s .. "," .. obs_low
-            s = s .. "," .. obs_high
-        end
-        self:send(s)
-        if observation_type == "IMAGE" or observation_type == "BOTH" then
-            self:sendImage()
-        end
-        
         ---- emu setting
-        if self.speed == "FAST" then
+        if self.mode == "TRAIN" then
             self:log_info("speed 800, unpaused.")
             client.speedmode(800)
             client.unpause()
-        elseif self.speed == "DEBUG" then
+        elseif self.mode == "DEBUG" then
             client.speedmode(100)
             self:log_info("Run with frameadvance.")
-        else  -- test
+        else
             self:log_info("speed 100, unpaused.")
             client.speedmode(100)
             client.unpause()
         end
-        
+        self.processor:reset()
+        self:log_debug("[reset]")
+
+        ---- 1st send
+        local s = ""
+        s = s .. self.platform .. "|"
+        for i = 1, #self.ACTION do
+            s = s .. self.ACTION[i] .. ","
+        end
+        if self.observation_type == "VALUE" or self.observation_type == "BOTH" then
+            local d = self.processor:getObservation()
+            local obs_len = #d
+            self:log_info("observation: " .. obs_len .. "," .. self.OBSERVATION)
+            s = s .. "|" .. obs_len
+            s = s .. "," .. self.OBSERVATION
+        end
+        self:send(s)
+        self:sendImage()
+
         ---- main loop
         while true do
             -- 基本接続チェックはpython側で実施
@@ -158,7 +181,7 @@ GymEnv.new = function(log_path)
                 break
             end
         end
-        
+
         self:close()
         print("speed 100, paused.")
         client.speedmode(100)
@@ -194,73 +217,61 @@ GymEnv.new = function(log_path)
         comm.socketServerScreenShot()
     end
 
+    this._sendExtendObservtion = function(self, s)
+        -- send1: s + "observation"
+        --    observationはimageの場合は""
+        -- send2: image
+        --    imageとbothの場合のみ送信
+        if self.observation_type == "VALUE" or self.observation_type == "BOTH" then
+            s = s .. self:_encodeObservation()
+        end
+        self:send(s)
+
+        if self.observation_type == "IMAGE" or self.observation_type == "BOTH" then
+            self:sendImage()
+        end
+    end
 
     -----------------------------------
     -- action
     -----------------------------------
     this._waitAction = function(self)
-
-        if self.speed == "DEBUG" then
-            emu.frameadvance()
-        end
-
         ---- recv
         local data = self:recv_wait()
         if data == nil then
             self:log_debug("recv data is nil")
-            return true  -- skip
+            return true -- skip
         elseif data == "close" then
             self:log_info("recv close")
             return false
-        elseif data == "frameadvance" then
-            self:log_info("frameadvance")
-            client.pause()
-            emu.frameadvance()
-            return true
-        elseif data == "image" then
-            self:sendImage()
-            return true
         end
 
         ---- cmd
         local cmd = string.sub(data, 1, 1)
 
         ---- reset
+        -- recv: "r"
+        -- send: invalid_actions "|" observation
         if cmd == "r" then
             self.processor:reset()
             self:log_debug("[reset]")
-            
-            -- valid_actions TODO
-            --local d = self.processor:get_valid_actions()
-            --local s = ""
-            --for i=1, #d do
-            --    s = s .. d[i] .. " "
-            --end
-            --self:send(s)
 
-            if data == "rv" then
-                self:send(self:_createObservation())
-            elseif data == "ri" then
-                self:sendImage()
-            elseif data == "rb" then
-                self:send(self:_createObservation())
-                self:sendImage()
-            end
+            local s = self:_encodeInvalidActions() .. "|"
+            self:_sendExtendObservtion(s)
             return true
         end
 
         ---- step
         if cmd == "s" then
-            ---- recv action
-            local obs_type = string.sub(data, 2, 2)
-            local act_str = string.sub(data, 4)
+            ---- 1. recv: "s act1 act2 act3" スペース区切り
+            local act_str = string.sub(data, 3)
             if act_str == nil then
                 self:log_info("action nil")
                 return false
             end
             local acts = split(act_str, " ")
 
-            for i=1, #self.ACTION do
+            for i = 1, #self.ACTION do
                 if self.ACTION[i] == "bool" then
                     acts[i] = (acts[i] == "1" and true or false)
                 elseif startswith(self.ACTION[i], "int") then
@@ -270,7 +281,7 @@ GymEnv.new = function(log_path)
                 end
             end
 
-            ---- step
+            ---- 2. step
             local prev_frame = emu.framecount()
             local reward, done = self.processor:step(acts)
             self:log_debug("[step] reward: " .. tostring(reward) .. ", done: " .. tostring(done))
@@ -279,27 +290,48 @@ GymEnv.new = function(log_path)
                 emu.frameadvance()
                 self:log_debug("frameadvance")
             end
-            
-            ---- send
-            local s = "" .. reward .. "|" .. (done and "1" or "0")
-            
-            --local d = self.processor:get_valid_actions()
-            --for i=1, #d do
-            --    s = s .. " " .. d[i]
-            --end
-            
-            if obs_type == "v" or data == "b" then
-                s = s .. "|" .. self:_createObservation()
-            end
-            self:send(s)
-            if obs_type == "i" or data == "b" then
-                self:sendImage()
-            end
-            
+
+            ----- 3. send: invalid_actions "|" reward "|" done "|" observation
+            -- reward: float
+            -- done  : "0" or "1"
+            local s = self:_encodeInvalidActions()
+            s = s .. "|" .. reward
+            s = s .. "|" .. (done and "1" or "0")
+            s = s .. "|"
+            self:_sendExtendObservtion(s)
+
             return true
         end
 
-        ---- function
+        ---- functions
+        if data == "frameadvance" then
+            self:log_info("frameadvance")
+            client.pause()
+            emu.frameadvance()
+            return true
+        elseif data == "image" then
+            self:log_info("send screenshot")
+            self:sendImage()
+            return true
+        elseif startswith(data, "save") then
+            self:log_info(data)
+            local name = tonumber(string.match(data, "save (.+)"))
+            if self.processor.backup ~= nil then
+                self.backup_data[name] = self.processor:backup()
+            end
+            savestate.save(name)
+            return true
+        elseif startswith(data, "load") then
+            self:log_info(data)
+            local name = tonumber(string.match(data, "load (.+)"))
+            savestate.load(name)
+            if self.processor.restore ~= nil then
+                self.processor:restore(self.backup_data[name])
+            end
+            return true
+        end
+
+        ---- eval function
         if cmd == "f" then
             local func_str = string.match(data, "f (.+)")
             if func_str == nil then
@@ -315,10 +347,11 @@ GymEnv.new = function(log_path)
     end
 
 
-    this._createObservation = function(self)
+    this._encodeObservation = function(self)
+        -- "s1 s2 s3 s4" スペース区切り
         local d = self.processor:getObservation()
         local s = ""
-        for i=1, #d do
+        for i = 1, #d do
             if i == 1 then
                 s = s .. d[i]
             else
@@ -328,13 +361,58 @@ GymEnv.new = function(log_path)
         return s
     end
 
+    this._encodeInvalidActions = function(self)
+        -- アクションセット毎の配列（なので2次元配列）
+        -- 区切りは"_"と","、最後に_が入る
+        -- float: 未定義
+        -- ex. ["bool", "int", "float"]
+        -- inv_acts = [[false, 0, not support], [true, 1, not support], ...]
+        -- str_acts = "0,0,_1,1,_"
+        if self.processor.getInvalidActions == nil then
+            return ""
+        end
+        local s = ""
+        local inv_act = self.processor:getInvalidActions()
+        for i = 1, #inv_act do
+            for j = 1, #self.ACTION do
+                if self.ACTION[j] == "bool" then
+                    s = s .. (inv_act[i][j] and "1" or "0") .. ","
+                elseif startswith(self.ACTION[j], "int") then
+                    s = s .. inv_act[i][j] .. ","
+                elseif startswith(self.ACTION[j], "float") then
+                    s = s .. "," -- pass
+                end
+            end
+            s = s .. "_"
+        end
+        return s
+    end
+
     -----------------------------------
     -- utility
     -----------------------------------
-    this.get_buttons = function(self)
-        local buttons = joypad.get()
-        for k, val in pairs(buttons) do buttons[k] = false end
-        return buttons
+    this.getKeys = function(self)
+        local jkeys = joypad.get()
+        for k, val in pairs(jkeys) do jkeys[k] = false end
+        return jkeys
+    end
+
+    this.setKey = function(self, key)
+        local jkeys = joypad.get()
+        for k, val in pairs(jkeys) do jkeys[k] = false end
+        if key ~= "" then
+            jkeys[key] = true
+        end
+        joypad.set(jkeys)
+    end
+
+    this.setKeys = function(self, keys)
+        local jkeys = joypad.get()
+        for k, val in pairs(jkeys) do jkeys[k] = false end
+        for i = 1, #keys do
+            jkeys[keys[i]] = true
+        end
+        joypad.set(jkeys)
     end
 
     ----------------------------------------
@@ -349,7 +427,6 @@ GymEnv.new = function(log_path)
         end
         local s = ""
         s = s .. os.date("%Y/%m/%d %H:%M:%S")
-        s = s .. " " .. emu.framecount() .. "frame "
         s = s .. ": " .. str
         f = io.open(self.log_path, "a")
         f:write(s .. "\n")
@@ -359,14 +436,14 @@ GymEnv.new = function(log_path)
         self:log(str, true)
     end
     this.log_debug = function(self, str)
-        if self.speed == "DEBUG" then
+        if self.mode == "DEBUG" then
             self:log(str, true)
         else
             self:log(str, false)
         end
     end
     this.log_info(this, "start")
-    
+
     return this
 end
 
