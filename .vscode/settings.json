@@ -26,4 +26,10 @@
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
+    "esbonio.sphinx.confDir": "",
+
+    // --- lua
+    "[lua]": {
+        "editor.formatOnSave": true
+    }
 }
