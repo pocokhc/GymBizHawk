@@ -9,16 +9,19 @@ logging.basicConfig(level=logging.INFO)
 
 
 def main():
+    assert "BIZHAWK_DIR" in os.environ
+    assert "ROM_PATH" in os.environ
+
     env = gym.make(
         "BizHawk-v0",
         bizhawk_dir=os.environ["BIZHAWK_DIR"],
-        lua_file=os.path.join(os.path.dirname(__file__), "nes.lua"),
-        lua_init_str="1",  # load slot
+        lua_file=os.path.join(os.path.dirname(__file__), "../gymbizhawk/rom.lua"),
+        setup_str_for_lua="1",  # load slot
     )
     env.reset()
 
     # 無限に続くのでstep上限を決める
-    for step in range(2000):
+    for step in range(1000):
         action = env.action_space.sample()
         observation, reward, terminated, truncated, info = env.step(action)
         done = terminated or truncated

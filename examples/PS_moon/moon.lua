@@ -1,5 +1,4 @@
 package.path = package.path .. ';../../gymbizhawk/bizhawk.lua'
-
 local bizhawk = require('bizhawk')
 
 -- "Close Tray": "False"
@@ -34,14 +33,13 @@ local EnvProcessor = {}
 EnvProcessor.new = function()
     local this = {}
     this.NAME = "moon"
-    this.ROM = os.getenv("MOON_PATH")
+    this.ROM = bizhawk.getenv_safe("MOON_PATH")
     this.HASH = "BF5383C5" -- first ROM version
     this.ACTION = { "bool" }
     this.OBSERVATION = "int"
 
-    this.init = function(self, env, py_init_str)
+    this.setup = function(self, env, setup_str)
         self.env = env
-        self.py_init_str = py_init_str
     end
 
     this.reset = function(self)
@@ -122,5 +120,5 @@ end
 
 
 ---- main
-local env = bizhawk.new("_moon.log")
+local env = bizhawk.GymEnv.new("_moon.log")
 env:run(EnvProcessor.new())

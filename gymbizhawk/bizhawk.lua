@@ -32,6 +32,17 @@ local function startswith(str, start)
     return string.sub(str, 1, string.len(start)) == start
 end
 
+local function getenv_safe(envVarName)
+    local success, value = pcall(os.getenv, envVarName)
+    if success then
+        return value
+    else
+        return nil
+    end
+end
+
+
+
 ---------------------------
 -- GymEnv
 ---------------------------
@@ -58,6 +69,8 @@ GymEnv.new = function(log_path)
     this.run = function(self, processor)
         -- bizahawk外から実行した場合は何もしない
         if emu == nil then
+            self:log_info("Run it from BizHawk.")
+            self:close()
             return
         end
 
@@ -70,6 +83,11 @@ GymEnv.new = function(log_path)
         self.processor = processor
 
         ---- open rom
+        if self.processor.ROM == nil then
+            self:log_info("ROM not found." .. self.processor.ROM)
+            self:close()
+            return
+        end
         client.openrom(self.processor.ROM)
         if gameinfo.getromname() == "Null" then
             self:log_info("ROM could not be opened. " .. self.processor.ROM)
@@ -89,15 +107,15 @@ GymEnv.new = function(log_path)
         self:log_info("1st recv: " .. recv)
 
         -- ある文字列から必要な部分一気にまとめて取り出す
-        local py_init_str
+        local setup_str
         local a
-        self.mode, self.observation_type, py_init_str, a = string.match(recv, "a|(.-)|(.-)|(.-)|(.+)")
-        if py_init_str == "_" then
-            py_init_str = ""
+        self.mode, self.observation_type, setup_str, a = string.match(recv, "a|(.-)|(.-)|(.-)|(.+)")
+        if setup_str == "_" then
+            setup_str = ""
         end
 
-        ------ init processor
-        self.processor:init(self, py_init_str)
+        ------ setup processor
+        self.processor:setup(self, setup_str)
         self.ACTION = self.processor.ACTION
         if self.ACTION == nil then
             self:log_info("ACTION is not defined.")
@@ -246,15 +264,12 @@ GymEnv.new = function(log_path)
             return false
         end
 
-        ---- cmd
-        local cmd = string.sub(data, 1, 1)
-
         ---- reset
         -- recv: "r"
         -- send: invalid_actions "|" observation
-        if cmd == "r" then
-            self.processor:reset()
+        if data == "reset" then
             self:log_debug("[reset]")
+            self.processor:reset()
 
             local s = self:_encodeInvalidActions() .. "|"
             self:_sendExtendObservtion(s)
@@ -262,9 +277,10 @@ GymEnv.new = function(log_path)
         end
 
         ---- step
-        if cmd == "s" then
-            ---- 1. recv: "s act1 act2 act3" スペース区切り
-            local act_str = string.sub(data, 3)
+        if startswith(data, "step") then
+            self:log_debug("[step] " .. tostring(data))
+            ---- 1. recv: "step act1 act2 act3" スペース区切り
+            local act_str = string.sub(data, 6)
             if act_str == nil then
                 self:log_info("action nil")
                 return false
@@ -305,16 +321,16 @@ GymEnv.new = function(log_path)
 
         ---- functions
         if data == "frameadvance" then
-            self:log_info("frameadvance")
+            self:log_info("[frameadvance]")
             client.pause()
             emu.frameadvance()
             return true
         elseif data == "image" then
-            self:log_info("send screenshot")
+            self:log_info("[image] send screenshot")
             self:sendImage()
             return true
         elseif startswith(data, "save") then
-            self:log_info(data)
+            self:log_info("[save] " .. data)
             local name = tonumber(string.match(data, "save (.+)"))
             if self.processor.backup ~= nil then
                 self.backup_data[name] = self.processor:backup()
@@ -322,7 +338,7 @@ GymEnv.new = function(log_path)
             savestate.save(name)
             return true
         elseif startswith(data, "load") then
-            self:log_info(data)
+            self:log_info("[load] " .. data)
             local name = tonumber(string.match(data, "load (.+)"))
             savestate.load(name)
             if self.processor.restore ~= nil then
@@ -332,7 +348,8 @@ GymEnv.new = function(log_path)
         end
 
         ---- eval function
-        if cmd == "f" then
+        if startswith(data, "function") then
+            self:log_info("[function] " .. data)
             local func_str = string.match(data, "f (.+)")
             if func_str == nil then
                 self:log_info("func_str nil")
@@ -447,4 +464,10 @@ GymEnv.new = function(log_path)
     return this
 end
 
-return GymEnv
+return {
+    GymEnv = GymEnv,
+    eval = eval,
+    split = split,
+    startswith = startswith,
+    getenv_safe = getenv_safe,
+}

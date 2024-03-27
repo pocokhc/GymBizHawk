@@ -5,7 +5,6 @@ import os
 import selectors
 import socket
 import subprocess
-from typing import Any, List, Optional, Union
 
 import cv2
 import gymnasium as gym
@@ -28,11 +27,11 @@ class ModeTypes(enum.Enum):
     EVAL = enum.auto()
 
     @staticmethod
-    def get_names() -> List[str]:
+    def get_names() -> list[str]:
         return [i.name for i in ModeTypes]
 
     @staticmethod
-    def from_str(mode: Union[str, "ModeTypes"]) -> "ModeTypes":
+    def from_str(mode: "str | ModeTypes") -> "ModeTypes":
         if isinstance(mode, str):
             mode = mode.upper()
             names = ModeTypes.get_names()
@@ -50,11 +49,11 @@ class ObservationTypes(enum.Enum):
     BOTH = enum.auto()
 
     @staticmethod
-    def get_names() -> List[str]:
+    def get_names() -> list[str]:
         return [i.name for i in ObservationTypes]
 
     @staticmethod
-    def from_str(mode: Union[str, "ObservationTypes"]) -> "ObservationTypes":
+    def from_str(mode: "str | ObservationTypes") -> "ObservationTypes":
         if isinstance(mode, str):
             mode = mode.upper()
             names = ObservationTypes.get_names()
@@ -73,7 +72,7 @@ class BizHawkError(Exception):
 class BizHawkEnv(gym.Env):
     metadata = {"render_modes": ["rgb_array"]}
 
-    def __init__(self, render_mode: Optional[str] = None, **kwargs):
+    def __init__(self, render_mode: str | None = None, **kwargs):
         self.bizhawk = BizHawk(**kwargs)
         self.render_mode = render_mode
 
@@ -125,13 +124,13 @@ class BizHawkEnv(gym.Env):
     def get_invalid_actions(self):
         return self.bizhawk.get_invalid_actions()
 
-    def backup(self) -> Any:
+    def backup(self):
         b = self.backup_count
         self.backup_count += 1
         self.bizhawk.send(f"save _t{b}.dat")
         return b
 
-    def restore(self, data: Any) -> None:
+    def restore(self, data) -> None:
         self.bizhawk.send(f"load _t{data}.dat")
 
 
@@ -140,9 +139,9 @@ class BizHawk:
         self,
         bizhawk_dir: str,
         lua_file: str,
-        mode: Union[ModeTypes, str] = ModeTypes.EVAL,
-        observation_type: Union[ObservationTypes, str] = ObservationTypes.IMAGE,
-        lua_init_str: str = "",
+        mode: ModeTypes | str = ModeTypes.EVAL,
+        observation_type: ObservationTypes | str = ObservationTypes.IMAGE,
+        setup_str_for_lua: str = "",
         socket_ip: str = "127.0.0.1",
         socket_port: int = 30000,
         socket_buffer_size: int = 1024 * 1024,
@@ -155,7 +154,7 @@ class BizHawk:
             lua_file (str): _description_
             mode (Union[ModeTypes, str], optional): _description_. Defaults to ModeTypes.TEST.
             observation_type (Union[ObservationTypes, str], optional): _description_. Defaults to ObservationTypes.IMAGE.
-            lua_init_str (str, optional): _description_. Defaults to "".
+            setup_str_for_lua (str, optional): _description_. Defaults to "".
             socket_ip (str, optional): _description_. Defaults to "127.0.0.1".
             socket_port (int, optional): _description_. Defaults to 30000.
             socket_buffer_size (int, optional): _description_. Defaults to 1024*1024.
@@ -168,7 +167,7 @@ class BizHawk:
         self.lua_file = os.path.abspath(lua_file)
         self.mode = ModeTypes.from_str(mode)
         self.observation_type = ObservationTypes.from_str(observation_type)
-        self.lua_init_str = lua_init_str
+        self.setup_str_for_lua = setup_str_for_lua
 
         self._send_count = 0
         self.emu = None
@@ -224,7 +223,7 @@ class BizHawk:
         s = "a|{}|{}|{}|{}".format(
             self.mode.name,
             self.observation_type.name,
-            "_" if self.lua_init_str == "" else self.lua_init_str,
+            "_" if self.setup_str_for_lua == "" else self.setup_str_for_lua,
             "_",
         )
         self.send(s)
@@ -250,9 +249,11 @@ class BizHawk:
             logger.info(f"observation: {obs_size}, {obs_type}")
         self.invalid_actions = []
 
-        # --- space
+        # --- action space
         acts = [self._decode_space_type(a) for a in self.action_types]
         self.action_space = gym.spaces.Tuple(acts)
+
+        # --- obs space
         if self.observation_type == ObservationTypes.VALUE:
             self.observation_space = self._decode_space_type(obs_type, shape=(obs_size,))
         elif self.observation_type == ObservationTypes.IMAGE:
@@ -389,7 +390,7 @@ class BizHawk:
         # --- reset
         # send: "r"
         # recv:  invalid_actions "|" observation
-        self.send("r")
+        self.send("reset")
         recv_str_list = self.recv(enable_split=True)
         self.invalid_actions = self._decode_invalid_actions(recv_str_list[0])
         state, img = self._recv_extend_observation(recv_str_list[1])
@@ -421,7 +422,7 @@ class BizHawk:
                 _a.append(str(a))
 
         act_str = " ".join(_a)
-        self.send(f"s {act_str}")
+        self.send(f"step {act_str}")
 
         # --- 3. recv
         # invalid_actions "|" reward "|" done "|" observation
@@ -448,7 +449,7 @@ class SocketServer:
         host: str,
         port: int,
         buffer_size: int = 1024 * 128,
-        timeout: Optional[int] = None,
+        timeout: int | None = None,
     ):
         self.buffer_size = buffer_size
         self.timeout = timeout
@@ -531,7 +532,7 @@ class SocketServer:
         self.conn.send(data.encode(encoding="utf-8"))
         return True
 
-    def recv(self, enable_decode: bool) -> Union[None, str, bytes]:
+    def recv(self, enable_decode: bool) -> str | bytes | None:
         if self.conn is None:
             return None
         if self.selector is None:
