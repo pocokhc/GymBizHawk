@@ -7,7 +7,7 @@ import os
 
 import numpy as np
 import srl
-from srl.algorithms import rainbow
+from srl.algorithms import dqn
 from srl.utils import common
 
 from gymbizhawk import bizhawk  # noqa F401  # load GymBizhawk env
@@ -19,6 +19,9 @@ common.logger_print()
 
 
 def _create_runner():
+    assert "BIZHAWK_DIR" in os.environ
+    assert "MOON_PATH" in os.environ
+
     env_config = srl.EnvConfig(
         "BizHawk-v0",
         kwargs=dict(
@@ -28,9 +31,9 @@ def _create_runner():
             observation_type="value",  # "image", "value", "both"
         ),
     )
-    rl_config = rainbow.Config(multisteps=1)
-    rl_config.epsilon.set_linear(500_000, 1.0, 0.01)
-    rl_config.dueling_network.set((512, 512), enable=True)
+    rl_config = dqn.Config()
+    rl_config.epsilon = rl_config.create_scheduler().set_linear(500_000, 1.0, 0.01)
+    rl_config.hidden_block.set_dueling_network((512, 512))
     rl_config.memory.warmup_size = 1000
     rl_config.memory.capacity = 100_000
 
