@@ -11,6 +11,11 @@ BizHawk*/
 !.vscode/setting.json
 
 
+# --- sphinx
+!docs_html/_*/
+!docs_html/_static/_sphinx_javascript_frameworks_compat.js
+
+
 #--- default python ignore ---
 
 # Byte-compiled / optimized / DLL files
