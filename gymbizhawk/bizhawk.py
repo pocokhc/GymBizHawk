@@ -24,7 +24,7 @@ gymnasium.envs.registration.register(
 class ModeTypes(enum.Enum):
     DEBUG = enum.auto()
     TRAIN = enum.auto()
-    EVAL = enum.auto()
+    RUN = enum.auto()
 
     @staticmethod
     def get_names() -> list[str]:
@@ -121,6 +121,10 @@ class BizHawkEnv(gym.Env):
     # ------------------------------------------
     # SRL
     # ------------------------------------------
+    def setup(self, rendering: bool, **kwargs):
+        if not rendering:
+            self.bizhawk.set_mode(ModeTypes.TRAIN)
+
     def get_invalid_actions(self):
         return self.bizhawk.get_invalid_actions()
 
@@ -139,8 +143,8 @@ class BizHawk:
         self,
         bizhawk_dir: str,
         lua_file: str,
-        mode: ModeTypes | str = ModeTypes.EVAL,
-        observation_type: ObservationTypes | str = ObservationTypes.IMAGE,
+        mode: ModeTypes | str = ModeTypes.RUN,
+        observation_type: ObservationTypes | str = ObservationTypes.VALUE,
         setup_str_for_lua: str = "",
         socket_ip: str = "127.0.0.1",
         socket_port: int = 30000,
@@ -152,7 +156,6 @@ class BizHawk:
         Args:
             bizhawk_dir (str): _description_
             lua_file (str): _description_
-            mode (Union[ModeTypes, str], optional): _description_. Defaults to ModeTypes.TEST.
             observation_type (Union[ObservationTypes, str], optional): _description_. Defaults to ObservationTypes.IMAGE.
             setup_str_for_lua (str, optional): _description_. Defaults to "".
             socket_ip (str, optional): _description_. Defaults to "127.0.0.1".
@@ -167,7 +170,7 @@ class BizHawk:
         self.lua_file = os.path.abspath(lua_file)
         self.mode = ModeTypes.from_str(mode)
         self.observation_type = ObservationTypes.from_str(observation_type)
-        self.setup_str_for_lua = setup_str_for_lua
+        self.setup_str_for_lua = setup_str_for_lua.replace("|", "")
 
         self._send_count = 0
         self.emu = None
@@ -220,11 +223,10 @@ class BizHawk:
             raise BizHawkError("connection fail.")
 
         # --- 1st send
-        s = "a|{}|{}|{}|{}".format(
+        s = "a|{}|{}|{}".format(
             self.mode.name,
             self.observation_type.name,
             "_" if self.setup_str_for_lua == "" else self.setup_str_for_lua,
-            "_",
         )
         self.send(s)
 
@@ -441,6 +443,10 @@ class BizHawk:
     # -----------------------------
     def get_invalid_actions(self):
         return self.invalid_actions
+
+    def set_mode(self, mode: ModeTypes | str):
+        self.mode = ModeTypes.from_str(mode)
+        self.send(f"mode {self.mode.name}")
 
 
 class SocketServer:

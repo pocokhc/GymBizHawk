@@ -16,6 +16,8 @@ def main():
         "BizHawk-v0",
         bizhawk_dir=os.environ["BIZHAWK_DIR"],
         lua_file=os.path.join(os.path.dirname(__file__), "../gymbizhawk/rom.lua"),
+        mode="run",  # "run", "train", "debug"
+        observation_type="value",  # "image", "value", "both"
         setup_str_for_lua="1",  # load slot
     )
     env.reset()

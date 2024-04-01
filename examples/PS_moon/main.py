@@ -13,8 +13,6 @@ def main():
         "BizHawk-v0",
         bizhawk_dir=os.environ["BIZHAWK_DIR"],
         lua_file=os.path.join(os.path.dirname(__file__), "moon.lua"),
-        mode="eval",  # "debug", "train", "eval"
-        observation_type="value",  # "image", "value", "both"
     )
     env.reset()
 

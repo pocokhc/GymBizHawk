@@ -13,8 +13,6 @@ def main():
         "DrMario-v0",
         bizhawk_dir=os.environ["BIZHAWK_DIR"],
         level=0,
-        mode="eval",  # "debug", "train", "eval"
-        observation_type="value",  # "image", "value", "both"
     )
     env.reset()
 

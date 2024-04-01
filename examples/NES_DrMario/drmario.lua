@@ -141,7 +141,7 @@ EnvProcessor.new = function()
         self:skipToStartScene()
         self:readMap()
         self:_searchValidPos()
-        if self.env.mode == "DEBUG" or self.env.mode == "EVAL" then
+        if self.env.mode ~= "TRAIN" then
             gui.clearGraphics()
             -- self:drawBox(1, 1, 0xffffff00, "") -- debug
             self:drawValidPos()
@@ -159,7 +159,7 @@ EnvProcessor.new = function()
         local reward = 0
         local done = false
 
-        if self.env.mode == "DEBUG" or self.env.mode == "EVAL" then
+        if self.env.mode ~= "TRAIN" then
             -- target pos
             self:drawBox(x, y, 0xffff0000, r)
         end
@@ -171,7 +171,7 @@ EnvProcessor.new = function()
         local result = self:skipToStartScene()
         self:readMap()
         self:_searchValidPos()
-        if self.env.mode == "DEBUG" or self.env.mode == "EVAL" then
+        if self.env.mode ~= "TRAIN" then
             gui.clearGraphics()
             self:drawValidPos()
             self:drawMap()
@@ -342,7 +342,7 @@ EnvProcessor.new = function()
         end
 
         --- draw
-        if self.env.mode == "DEBUG" or self.env.mode == "EVAL" then
+        if self.env.mode ~= "TRAIN" then
             self:drawBox(goal.x, goal.y, 0xffff0000, goal.r)
         end
 

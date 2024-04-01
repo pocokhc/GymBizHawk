@@ -52,6 +52,7 @@ GymEnv.new = function(log_path)
     this.log_path = log_path
     this.processor = nil
     this.mode = ""
+    this.is_reset = false
     this.observation_type = ""
     this.backup_data = {}
 
@@ -108,8 +109,8 @@ GymEnv.new = function(log_path)
 
         -- ある文字列から必要な部分一気にまとめて取り出す
         local setup_str
-        local a
-        self.mode, self.observation_type, setup_str, a = string.match(recv, "a|(.-)|(.-)|(.-)|(.+)")
+        local mode
+        mode, self.observation_type, setup_str = string.match(recv, "a|(.-)|(.-)|(.+)")
         if setup_str == "_" then
             setup_str = ""
         end
@@ -137,29 +138,31 @@ GymEnv.new = function(log_path)
             gamehash .. ((gamehash == self.processor.HASH) and " match" or (", not match " .. self.processor.HASH)))
         self:log_info("Platform :" .. self.platform)
         self:log_info("Processor:" .. self.processor.NAME)
-        self:log_info("Mode     :" .. self.mode)
         local s = "" .. #self.ACTION .. " "
         for i = 1, #self.ACTION do
             s = s .. self.ACTION[i] .. ","
         end
-        self:log_info("action    :" .. s)
-        self:log_info("log       :" .. self.log_path)
+        self:log_info("action   :" .. s)
+        self:log_info("log      :" .. self.log_path)
+        self:log_info("mode     :" .. mode)
 
         ---- emu setting
-        if self.mode == "TRAIN" then
-            self:log_info("speed 800, unpaused.")
+        self:log_debug("[reset]")
+        if mode ~= "DEBUG" then
+            self:log_debug("pause, speed 800, unpause")
+            self.mode = "TRAIN"
+            client.pause()
             client.speedmode(800)
-            client.unpause()
-        elseif self.mode == "DEBUG" then
-            client.speedmode(100)
-            self:log_info("Run with frameadvance.")
-        else
-            self:log_info("speed 100, unpaused.")
-            client.speedmode(100)
             client.unpause()
         end
         self.processor:reset()
-        self:log_debug("[reset]")
+        if mode ~= "DEBUG" then
+            self:log_debug("speed 100")
+            client.speedmode(100)
+            self.mode = ""
+        end
+        self.is_reset = true
+        self:setMode(mode)
 
         ---- 1st send
         local s = ""
@@ -202,8 +205,29 @@ GymEnv.new = function(log_path)
 
         self:close()
         print("speed 100, paused.")
+        self:log_debug("speed 100, paused")
         client.speedmode(100)
         client.pause()
+    end
+
+    this.setMode = function(self, mode)
+        if self.mode == mode then
+            return
+        end
+        self.mode = mode
+        client.pause()
+        if self.mode == "TRAIN" then
+            self:log_info("speed 800, unpaused.")
+            client.speedmode(800)
+            client.unpause()
+        elseif self.mode == "DEBUG" then
+            client.speedmode(100)
+            self:log_info("Run with frameadvance.")
+        else
+            self:log_info("speed 100, unpaused.")
+            client.speedmode(100)
+            client.unpause()
+        end
     end
 
     -----------------------------------
@@ -218,7 +242,6 @@ GymEnv.new = function(log_path)
         self:log_debug("recv: " .. d)
         return d
     end
-
 
     this.send = function(self, d)
         -- empty is not send
@@ -268,8 +291,13 @@ GymEnv.new = function(log_path)
         -- recv: "r"
         -- send: invalid_actions "|" observation
         if data == "reset" then
-            self:log_debug("[reset]")
-            self.processor:reset()
+            if self.is_reset then
+                self:log_debug("[reset] skip")
+            else
+                self:log_debug("[reset]")
+                self.processor:reset()
+                self.is_reset = true
+            end
 
             local s = self:_encodeInvalidActions() .. "|"
             self:_sendExtendObservtion(s)
@@ -300,6 +328,7 @@ GymEnv.new = function(log_path)
             ---- 2. step
             local prev_frame = emu.framecount()
             local reward, done = self.processor:step(acts)
+            self.is_reset = false
             self:log_debug("[step] reward: " .. tostring(reward) .. ", done: " .. tostring(done))
             if prev_frame == emu.framecount() then
                 -- step内でframeが進んでいない場合進める
@@ -321,16 +350,21 @@ GymEnv.new = function(log_path)
 
         ---- functions
         if data == "frameadvance" then
-            self:log_info("[frameadvance]")
+            self:log_debug("[frameadvance]")
             client.pause()
             emu.frameadvance()
             return true
         elseif data == "image" then
-            self:log_info("[image] send screenshot")
+            self:log_debug("[image] send screenshot")
             self:sendImage()
             return true
+        elseif startswith(data, "mode") then
+            local mode = string.match(data, "mode (.+)")
+            self:log_debug("[mode] set " .. mode)
+            self:setMode(mode)
+            return true
         elseif startswith(data, "save") then
-            self:log_info("[save] " .. data)
+            self:log_debug("[save] " .. data)
             local name = tonumber(string.match(data, "save (.+)"))
             if self.processor.backup ~= nil then
                 self.backup_data[name] = self.processor:backup()
@@ -338,7 +372,7 @@ GymEnv.new = function(log_path)
             savestate.save(name)
             return true
         elseif startswith(data, "load") then
-            self:log_info("[load] " .. data)
+            self:log_debug("[load] " .. data)
             local name = tonumber(string.match(data, "load (.+)"))
             savestate.load(name)
             if self.processor.restore ~= nil then
@@ -427,7 +461,9 @@ GymEnv.new = function(log_path)
         local jkeys = joypad.get()
         for k, val in pairs(jkeys) do jkeys[k] = false end
         for i = 1, #keys do
-            jkeys[keys[i]] = true
+            if keys[i] ~= "" then
+                jkeys[keys[i]] = true
+            end
         end
         joypad.set(jkeys)
     end
