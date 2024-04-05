@@ -112,7 +112,6 @@ class BizHawkEnv(gym.Env):
             img = self.bizhawk.fetch_image(self.bizhawk.image_shape)
         else:
             img = self.bizhawk.step_img
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = img.swapaxes(0, 1)
         img = pygame.surfarray.make_surface(img)
         self.screen.blit(img, (0, 0))
@@ -324,6 +323,7 @@ class BizHawk:
             raise BizHawkError("image recv fail")
         img_arr = np.frombuffer(img_raw, dtype=np.uint8)
         img = cv2.imdecode(img_arr, cv2.IMREAD_COLOR)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         if resize_shape is None or img.shape == resize_shape:
             logger.debug(f"recv img: {img.shape}")
         else:
