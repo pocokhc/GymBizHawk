@@ -323,13 +323,15 @@ class BizHawk:
             raise BizHawkError("image recv fail")
         img_arr = np.frombuffer(img_raw, dtype=np.uint8)
         img = cv2.imdecode(img_arr, cv2.IMREAD_COLOR)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        if (self.image_shape != (0, 0)) and (img.shape[:1] != self.image_shape[:1]):
+            img = cv2.resize(img, (self.image_shape[1], self.image_shape[0]))
         if resize_shape is None or img.shape == resize_shape:
             logger.debug(f"recv img: {img.shape}")
         else:
             old_shape = img.shape
             img = cv2.resize(img, resize_shape[:1])
             logger.debug(f"recv img: {old_shape} -> {img.shape}")
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         return img
 
     def _decode_observation(self, obs_str: str) -> np.ndarray:
