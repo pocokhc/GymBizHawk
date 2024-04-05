@@ -489,6 +489,9 @@ GymEnv.new = function(log_path)
         self:log(str, true)
     end
     this.log_debug = function(self, str)
+        if self.mode == "TRAIN" then
+            return
+        end
         if self.mode == "DEBUG" then
             self:log(str, true)
         else
