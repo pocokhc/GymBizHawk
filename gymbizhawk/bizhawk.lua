@@ -217,14 +217,14 @@ GymEnv.new = function(log_path)
         self.mode = mode
         client.pause()
         if self.mode == "TRAIN" then
-            self:log_info("speed 800, unpaused.")
+            self:log_info("mode TRAIN: speed 800, unpaused.")
             client.speedmode(800)
             client.unpause()
         elseif self.mode == "DEBUG" then
             client.speedmode(100)
-            self:log_info("Run with frameadvance.")
+            self:log_info("mode DEBUG: Run with frameadvance.")
         else
-            self:log_info("speed 100, unpaused.")
+            self:log_info("mode RUN: speed 100, unpaused.")
             client.speedmode(100)
             client.unpause()
         end
