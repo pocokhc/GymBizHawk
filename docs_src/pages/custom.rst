@@ -7,7 +7,8 @@ Make Original Environment
 luaやpythonを実装することで動きをカスタムすることができます。
 概要は以下です。
 
-![](../../diagrams/overview.drawio.png)
+.. image:: ../../diagrams/overview.drawio.png
+
 
 必須はLua側のUserProcessorでBizHawkの操作を記載します。
 Python側のUserEnvはオプションでGymに渡す直前にコードを書きたい場合に記載します。
@@ -70,9 +71,6 @@ BizHawkへの操作を記載します。
    env:run(EnvProcessor.new())
 
 
-具体的な実装例として `examples/moon/` も参考にしてください。
-
-
 ActionTypes / ObservationType
 ------------------------------------
 
@@ -99,7 +97,7 @@ ActionTypes / ObservationType
      - float 0.0 1.0
      - Box(low, high, shape, dtype=np.float32)
 
-ACTIONは配列形式で指定できます。
+ACTIONは配列形式で指定します。
 
 .. code-block:: Lua
 
@@ -111,7 +109,7 @@ ACTIONは配列形式で指定できます。
    }
 
 
-OBSERVATION1つだけ指定でき、全ての値でこのtypeが適用されます。
+OBSERVATIONは1つだけ指定でき、全ての値でこのtypeが適用されます。
 
 
 .. code-block:: Lua
@@ -163,5 +161,5 @@ BizHawkEnvとGymとの間の処理を記載できます。
          return state, reward, terminated, truncated, info
 
 
-具体的な実装例として `examples/NES_DrMario/` も参考にしてください。
+具体的な実装例は `examples` 配下を参考にしてください。
 

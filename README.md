@@ -39,6 +39,16 @@ pip install .  # install GymBizHawk & register Gym
 
 + [Make Original Environment](https://pocokhc.github.io/GymBizHawk/pages/custom.html)
 
+## Samples
+
++ とりあえず動かしてみたい(I want to move it for now)
+    + examples/main.py
++ Lua側を作って動かしてみる(I want to add the lua side and create it.)
+    + examples/PS_moon/
+    + examples/NES_SMB/
++ 1stepの挙動も細かく制御して作成したい(I want to control and create the behavior of 1 step.)
+    + examples/NES_DrMario/
+
 
 # 3. Overview
 
