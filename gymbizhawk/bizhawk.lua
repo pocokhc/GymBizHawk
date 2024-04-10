@@ -52,6 +52,7 @@ GymEnv.new = function(log_path)
     this.log_path = log_path
     this.processor = nil
     this.mode = ""
+    this.speed = 100
     this.is_reset = false
     this.observation_type = ""
     this.backup_data = {}
@@ -153,12 +154,14 @@ GymEnv.new = function(log_path)
             self.mode = "TRAIN"
             client.pause()
             client.speedmode(800)
+            self.speed = 800
             client.unpause()
         end
         self.processor:reset()
         if mode ~= "DEBUG" then
             self:log_debug("speed 100")
             client.speedmode(100)
+            self.speed = 100
             self.mode = ""
         end
         self.is_reset = true
@@ -206,6 +209,7 @@ GymEnv.new = function(log_path)
         self:close()
         print("speed 100, paused.")
         self:log_debug("speed 100, paused")
+        self.speed = 100
         client.speedmode(100)
         client.pause()
     end
@@ -219,13 +223,16 @@ GymEnv.new = function(log_path)
         if self.mode == "TRAIN" then
             self:log_info("mode TRAIN: speed 800, unpaused.")
             client.speedmode(800)
+            self.speed = 800
             client.unpause()
         elseif self.mode == "DEBUG" then
             client.speedmode(100)
+            self.speed = 100
             self:log_info("mode DEBUG: Run with frameadvance.")
         else
             self:log_info("mode RUN: speed 100, unpaused.")
             client.speedmode(100)
+            self.speed = 100
             client.unpause()
         end
     end
@@ -295,8 +302,17 @@ GymEnv.new = function(log_path)
                 self:log_debug("[reset] skip")
             else
                 self:log_debug("[reset]")
+                -- debug以外は高速にする
+                if self.mode ~= "DEBUG" and self.speed == 100 then
+                    self:log_info("speed 800")
+                    client.speedmode(800)
+                end
                 self.processor:reset()
                 self.is_reset = true
+                if self.mode ~= "DEBUG" and self.speed == 100 then
+                    self:log_info("speed 100")
+                    client.speedmode(100)
+                end
             end
 
             local s = self:_encodeInvalidActions() .. "|"
