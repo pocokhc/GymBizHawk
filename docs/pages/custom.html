@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Make Original Environment &mdash; GymBizHawk 0.1.0.0 ドキュメント</title>
+  <title>Make Original Environment &mdash; GymBizHawk 0.1.0.3 ドキュメント</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
 
@@ -15,7 +15,7 @@
   
         <script src="../_static/jquery.js?v=5d32c60e"></script>
         <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script src="../_static/documentation_options.js?v=5e9701a6"></script>
+        <script src="../_static/documentation_options.js?v=696f8bcc"></script>
         <script src="../_static/doctools.js?v=888ff710"></script>
         <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
         <script src="../_static/translations.js?v=4dbe4bdc"></script>
@@ -84,7 +84,7 @@
 <span id="custom-env"></span><h1>Make Original Environment<a class="headerlink" href="#make-original-environment" title="Link to this heading"></a></h1>
 <p>luaやpythonを実装することで動きをカスタムすることができます。
 概要は以下です。</p>
-<p>![](../../diagrams/overview.drawio.png)</p>
+<img alt="../_images/overview.drawio.png" src="../_images/overview.drawio.png" />
 <p>必須はLua側のUserProcessorでBizHawkの操作を記載します。
 Python側のUserEnvはオプションでGymに渡す直前にコードを書きたい場合に記載します。</p>
 <section id="userprocessor-lua">
@@ -140,7 +140,6 @@ Python側のUserEnvはオプションでGymに渡す直前にコードを書き�
 <span class="n">env</span><span class="p">:</span><span class="n">run</span><span class="p">(</span><span class="n">EnvProcessor</span><span class="p">.</span><span class="n">new</span><span class="p">())</span>
 </pre></div>
 </div>
-<p>具体的な実装例として <cite>examples/moon/</cite> も参考にしてください。</p>
 <section id="actiontypes-observationtype">
 <h3>ActionTypes / ObservationType<a class="headerlink" href="#actiontypes-observationtype" title="Link to this heading"></a></h3>
 <p><cite>this.ACTION</cite> と <cite>this.OBSERVATION</cite> は以下のtypeを指定します。</p>
@@ -172,7 +171,7 @@ Python側のUserEnvはオプションでGymに渡す直前にコードを書き�
 </tr>
 </tbody>
 </table>
-<p>ACTIONは配列形式で指定できます。</p>
+<p>ACTIONは配列形式で指定します。</p>
 <div class="highlight-Lua notranslate"><div class="highlight"><pre><span></span><span class="n">this</span><span class="p">.</span><span class="n">ACTION</span> <span class="o">=</span> <span class="p">{</span>
    <span class="s2">&quot;int 1 8&quot;</span><span class="p">,</span>
    <span class="s2">&quot;int 1 16&quot;</span><span class="p">,</span>
@@ -181,7 +180,7 @@ Python側のUserEnvはオプションでGymに渡す直前にコードを書き�
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>OBSERVATION1つだけ指定でき、全ての値でこのtypeが適用されます。</p>
+<p>OBSERVATIONは1つだけ指定でき、全ての値でこのtypeが適用されます。</p>
 <div class="highlight-Lua notranslate"><div class="highlight"><pre><span></span><span class="n">this</span><span class="p">.</span><span class="n">OBSERVATION</span> <span class="o">=</span> <span class="s2">&quot;int&quot;</span>
 </pre></div>
 </div>
@@ -226,7 +225,7 @@ Python側のUserEnvはオプションでGymに渡す直前にコードを書き�
       <span class="k">return</span> <span class="n">state</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">terminated</span><span class="p">,</span> <span class="n">truncated</span><span class="p">,</span> <span class="n">info</span>
 </pre></div>
 </div>
-<p>具体的な実装例として <cite>examples/NES_DrMario/</cite> も参考にしてください。</p>
+<p>具体的な実装例は <cite>examples</cite> 配下を参考にしてください。</p>
 </section>
 </section>
 
