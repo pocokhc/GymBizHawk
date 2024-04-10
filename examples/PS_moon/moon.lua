@@ -92,14 +92,14 @@ EnvProcessor.new = function()
         elseif y >= 240 then
             return -100, true
         end
-        if x > 320 then
+        if x > 240 then
             return -100, true
         end
 
-        if math.abs(goal_y - y) < 30 then
-            return 0, false
+        if math.abs(goal_y - y) < 5 then
+            return 0.1, false
         else
-            return -1, false
+            return 0, false
         end
     end
 
@@ -108,7 +108,7 @@ EnvProcessor.new = function()
         local goal_y = mainmemory.read_s16_le(0x1119EC)
         local d = {}
         d[#d + 1] = mainmemory.read_s16_le(0x1119E6) -- ay
-        d[#d + 1] = mainmemory.read_s16_le(0x1119E8) -- x
+        --d[#d + 1] = mainmemory.read_s16_le(0x1119E8) -- x
         d[#d + 1] = y
         d[#d + 1] = goal_y - y
         d[#d + 1] = mainmemory.readbyte(0x1119EE) -- lv

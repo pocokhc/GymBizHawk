@@ -1,5 +1,6 @@
 """
 Sample code running with the reinforcement learning framework SRL
+v0.15.2
 https://github.com/pocokhc/simple_distributed_rl
 """
 
@@ -7,7 +8,7 @@ import os
 
 import numpy as np
 import srl
-from srl.algorithms import dqn
+from srl.algorithms import rainbow
 from srl.utils import common
 
 from gymbizhawk import bizhawk  # noqa F401  # load GymBizhawk env
@@ -27,15 +28,15 @@ def _create_runner():
         kwargs=dict(
             bizhawk_dir=os.environ["BIZHAWK_DIR"],
             lua_file=os.path.join(os.path.dirname(__file__), "moon.lua"),
-            mode="train",  # "debug", "train", "eval"
-            observation_type="value",  # "image", "value", "both"
         ),
     )
-    rl_config = dqn.Config()
-    rl_config.epsilon = rl_config.create_scheduler().set_linear(500_000, 1.0, 0.01)
+    rl_config = rainbow.Config(multisteps=1, lr=0.0005, discount=0.995)
     rl_config.hidden_block.set_dueling_network((512, 512))
+    rl_config.memory.set_proportional_memory()
     rl_config.memory.warmup_size = 1000
     rl_config.memory.capacity = 100_000
+    rl_config.window_length = 4
+    rl_config.memory_compress = False
 
     runner = srl.Runner(env_config, rl_config)
     runner.model_summary()
@@ -44,17 +45,14 @@ def _create_runner():
 
 def train():
     runner = _create_runner()
-    runner.set_checkpoint(checkpoint_dir, is_load=False, interval=60 * 5)
+    runner.set_checkpoint(checkpoint_dir, is_load=False)
     runner.set_history_on_file(history_dir)
-    runner.train(max_train_count=1_000_000)
+    # runner.train(max_train_count=1_000_000)
+    runner.train_mp(actor_num=1, max_train_count=1_000_000)
 
 
 def eval():
     runner = _create_runner()
-
-    # --- view history
-    history = runner.load_history(history_dir)
-    history.plot()
 
     # --- eval
     runner.load_checkpoint(checkpoint_dir)
@@ -62,7 +60,12 @@ def eval():
     rewards = runner.evaluate(max_episodes=1)
     print(rewards)
     print(np.mean(rewards))
-    runner.animation_save_gif(os.path.join(base_dir, "_moon.gif"))
+    # runner.animation_save_gif(os.path.join(base_dir, "_moon.gif"))
+    runner.replay_window()
+
+    # --- view history
+    history = runner.load_history(history_dir)
+    history.plot()
 
 
 if __name__ == "__main__":
