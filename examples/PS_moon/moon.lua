@@ -111,7 +111,7 @@ EnvProcessor.new = function()
         --d[#d + 1] = mainmemory.read_s16_le(0x1119E8) -- x
         d[#d + 1] = y
         d[#d + 1] = goal_y - y
-        d[#d + 1] = mainmemory.readbyte(0x1119EE) -- lv
+        --d[#d + 1] = mainmemory.readbyte(0x1119EE) -- lv
         return d
     end
 

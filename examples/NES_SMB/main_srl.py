@@ -31,12 +31,12 @@ def _create_runner():
         ),
         frameskip=5,
     )
-    rl_config = rainbow.Config(multisteps=1, lr=0.0005, discount=0.99, epsilon=0.05)
-    rl_config.hidden_block.set_dueling_network((512,))
+    rl_config = rainbow.Config(multisteps=1, lr=0.0002, discount=0.99, epsilon=0.05)
+    rl_config.hidden_block.set_dueling_network((256, 256, 256))
     rl_config.memory.set_proportional_memory()
     rl_config.memory.warmup_size = 1000
     rl_config.memory.capacity = 100_000
-    rl_config.window_length = 4
+    rl_config.window_length = 8
     rl_config.memory_compress = False
 
     runner = srl.Runner(env_config, rl_config)

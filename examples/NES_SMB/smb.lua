@@ -196,26 +196,26 @@ EnvProcessor.new = function()
 
         -- dead
         if mainmemory.readbyte(0xE) == 11 then
-            return -10, true
+            return -1, true
         end
         if self.mario_y > 210 then
-            return -10, true
+            return -1, true
         end
         if mainmemory.readbyte(0xE) == 0x0 then
-            return -10, true
+            return -1, true
         end
 
         -- 進んだら
-        local reward = 0
+        local reward = -0.01
         if self.stage_mario_x > self._max_stage_mario_x then
-            --reward = self.stage_mario_x - self._max_stage_mario_x
+            reward = (self.stage_mario_x - self._max_stage_mario_x)/10
             self._max_stage_mario_x = self.stage_mario_x
             self._stepout = 0
         else
             -- 一定時間進まなかったら終わり
             self._stepout = self._stepout + 1
             if self._stepout > 60 * 2 then
-                return -10, true
+                return -1, true
             end
         end
 

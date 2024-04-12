@@ -30,8 +30,8 @@ def _create_runner():
             lua_file=os.path.join(os.path.dirname(__file__), "moon.lua"),
         ),
     )
-    rl_config = rainbow.Config(multisteps=1, lr=0.0005, discount=0.995)
-    rl_config.hidden_block.set_dueling_network((512, 512))
+    rl_config = rainbow.Config(multisteps=1, lr=0.0002, discount=0.99)
+    rl_config.hidden_block.set_dueling_network((256, 256, 256))
     rl_config.memory.set_proportional_memory()
     rl_config.memory.warmup_size = 1000
     rl_config.memory.capacity = 100_000
@@ -56,11 +56,10 @@ def eval():
 
     # --- eval
     runner.load_checkpoint(checkpoint_dir)
-
     rewards = runner.evaluate(max_episodes=1)
     print(rewards)
     print(np.mean(rewards))
-    # runner.animation_save_gif(os.path.join(base_dir, "_moon.gif"))
+    runner.animation_save_gif(os.path.join(base_dir, "_moon.gif"))
     runner.replay_window()
 
     # --- view history
