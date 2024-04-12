@@ -86,16 +86,16 @@ ActionTypes / ObservationType
      - Discrete(2)
    * - int
      - int
-     - Box(low=-np.inf, high=-np.inf, shape, dtype=np.int64)
+     - Box(low=-np.inf, high=-np.inf, shape=(1,), dtype=np.int64)
    * - int [low] [high]
      - int 0 255
-     - Box(low, high, shape, dtype=np.int64)
+     - Box(low, high, shape=(1,), dtype=np.int64)
    * - float
      - float
-     - Box(low=-np.inf, high=-np.inf, shape, dtype=np.float32)
+     - Box(low=-np.inf, high=-np.inf, shape=(1,), dtype=np.float32)
    * - float [low] [high]
      - float 0.0 1.0
-     - Box(low, high, shape, dtype=np.float32)
+     - Box(low, high, shape=(1,), dtype=np.float32)
 
 ACTIONは配列形式で指定します。
 
@@ -108,9 +108,9 @@ ACTIONは配列形式で指定します。
       "bool",
    }
 
+gym側へはこの配列を `gym.spaces.Tuple` 形式で渡します。
 
 OBSERVATIONは1つだけ指定でき、全ての値でこのtypeが適用されます。
-
 
 .. code-block:: Lua
 
