@@ -155,19 +155,19 @@ Python側のUserEnvはオプションでGymに渡す直前にコードを書き�
 </tr>
 <tr class="row-odd"><td><p>int</p></td>
 <td><p>int</p></td>
-<td><p>Box(low=-np.inf, high=-np.inf, shape, dtype=np.int64)</p></td>
+<td><p>Box(low=-np.inf, high=-np.inf, shape=(1,), dtype=np.int64)</p></td>
 </tr>
 <tr class="row-even"><td><p>int [low] [high]</p></td>
 <td><p>int 0 255</p></td>
-<td><p>Box(low, high, shape, dtype=np.int64)</p></td>
+<td><p>Box(low, high, shape=(1,), dtype=np.int64)</p></td>
 </tr>
 <tr class="row-odd"><td><p>float</p></td>
 <td><p>float</p></td>
-<td><p>Box(low=-np.inf, high=-np.inf, shape, dtype=np.float32)</p></td>
+<td><p>Box(low=-np.inf, high=-np.inf, shape=(1,), dtype=np.float32)</p></td>
 </tr>
 <tr class="row-even"><td><p>float [low] [high]</p></td>
 <td><p>float 0.0 1.0</p></td>
-<td><p>Box(low, high, shape, dtype=np.float32)</p></td>
+<td><p>Box(low, high, shape=(1,), dtype=np.float32)</p></td>
 </tr>
 </tbody>
 </table>
@@ -180,6 +180,7 @@ Python側のUserEnvはオプションでGymに渡す直前にコードを書き�
 <span class="p">}</span>
 </pre></div>
 </div>
+<p>gym側へはこの配列を <cite>gym.spaces.Tuple</cite> 形式で渡します。</p>
 <p>OBSERVATIONは1つだけ指定でき、全ての値でこのtypeが適用されます。</p>
 <div class="highlight-Lua notranslate"><div class="highlight"><pre><span></span><span class="n">this</span><span class="p">.</span><span class="n">OBSERVATION</span> <span class="o">=</span> <span class="s2">&quot;int&quot;</span>
 </pre></div>
