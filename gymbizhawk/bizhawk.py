@@ -225,7 +225,7 @@ class BizHawk:
         cmd += " --socket_ip={}".format(self.socket_ip)
         cmd += " --socket_port={}".format(self.socket_port)
         cmd += " --lua={}".format(self.lua_file)
-        logger.debug("bizhawk run: {}".format(cmd))
+        logger.info(f"bizhawk run: {cmd}")
         self.emu = subprocess.Popen(cmd)
 
         # --- connect
@@ -239,6 +239,7 @@ class BizHawk:
             "1" if self.silent else "0",
             "_" if self.setup_str_for_lua == "" else self.setup_str_for_lua,
         )
+        logger.info(f"1st send data: {s}")
         self.send(s)
 
         # --- 1st recv
@@ -485,10 +486,8 @@ class SocketServer:
                 break
             except OSError as e:
                 if e.errno == errno.EADDRINUSE:
-                    logger.info(f"{port}port used.")
                     self.port += 1
                 elif e.errno == errno.WSAEADDRINUSE:
-                    logger.info(f"{port}port used.")
                     self.port += 1
                 else:
                     self.close()

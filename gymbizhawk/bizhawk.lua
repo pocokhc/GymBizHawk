@@ -182,6 +182,9 @@ GymEnv.new = function(log_path)
             s = s .. self.ACTION[i] .. ","
         end
         if self.observation_type == "VALUE" or self.observation_type == "BOTH" then
+            if self.processor["getObservation"] == nil then
+                self:log_info("'getObservation' is not defined for processor. observation_type='value' cannot be used.")
+            end
             local d = self.processor:getObservation()
             local obs_len = #d
             self:log_info("observation: " .. obs_len .. "," .. self.OBSERVATION)
@@ -225,6 +228,10 @@ GymEnv.new = function(log_path)
 
     this.setMode = function(self, mode)
         if self.mode == mode then
+            return
+        end
+        if self.mode == "DEBUG" then
+            self:log_info("mode no change(debug mode)")
             return
         end
         self.mode = mode
@@ -506,7 +513,7 @@ GymEnv.new = function(log_path)
         local s = ""
         s = s .. os.date("%Y/%m/%d %H:%M:%S")
         s = s .. ": " .. str
-        f = io.open(self.log_path, "a")
+        local f = io.open(self.log_path, "a")
         f:write(s .. "\n")
         f:close()
     end
