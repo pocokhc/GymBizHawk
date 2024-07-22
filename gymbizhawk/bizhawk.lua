@@ -98,6 +98,7 @@ GymEnv.new = function(log_path)
         end
         self.platform = emu.getsystemid()
         client.pause()
+        client.SetSoundOn(false)
 
         ---- 1st recv
         local recv = self:recv_wait()
@@ -111,9 +112,17 @@ GymEnv.new = function(log_path)
         -- ある文字列から必要な部分一気にまとめて取り出す
         local setup_str
         local mode
-        mode, self.observation_type, setup_str = string.match(recv, "a|(.-)|(.-)|(.+)")
+        local silent
+        mode, self.observation_type, silent, setup_str = string.match(recv, "a|(.-)|(.-)|(.-)|(.+)")
         if setup_str == "_" then
             setup_str = ""
+        end
+        self:log_info("mode            :" .. mode)
+        self:log_info("observation_type:" .. self.observation_type)
+        self:log_info("silent          :" .. silent)
+        self:log_info("setup_str       :" .. setup_str)
+        if silent == "0" then
+            client.SetSoundOn(true)
         end
 
         ------ setup processor
@@ -145,7 +154,6 @@ GymEnv.new = function(log_path)
         end
         self:log_info("action   :" .. s)
         self:log_info("log      :" .. self.log_path)
-        self:log_info("mode     :" .. mode)
 
         ---- emu setting
         self:log_debug("[reset]")
@@ -211,6 +219,7 @@ GymEnv.new = function(log_path)
         self:log_debug("speed 100, paused")
         self.speed = 100
         client.speedmode(100)
+        client.SetSoundOn(true)
         client.pause()
     end
 

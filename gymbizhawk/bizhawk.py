@@ -144,6 +144,7 @@ class BizHawk:
         lua_file: str,
         mode: ModeTypes | str = ModeTypes.RUN,
         observation_type: ObservationTypes | str = ObservationTypes.VALUE,
+        silent: bool = True,
         setup_str_for_lua: str = "",
         socket_ip: str = "127.0.0.1",
         socket_port: int = 30000,
@@ -169,6 +170,7 @@ class BizHawk:
         self.lua_file = os.path.abspath(lua_file)
         self.mode = ModeTypes.from_str(mode)
         self.observation_type = ObservationTypes.from_str(observation_type)
+        self.silent = silent
         self.setup_str_for_lua = setup_str_for_lua.replace("|", "")
 
         self._send_count = 0
@@ -222,9 +224,10 @@ class BizHawk:
             raise BizHawkError("connection fail.")
 
         # --- 1st send
-        s = "a|{}|{}|{}".format(
+        s = "a|{}|{}|{}|{}".format(
             self.mode.name,
             self.observation_type.name,
+            "1" if self.silent else "0",
             "_" if self.setup_str_for_lua == "" else self.setup_str_for_lua,
         )
         self.send(s)
