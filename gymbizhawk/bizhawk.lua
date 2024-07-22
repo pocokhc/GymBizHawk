@@ -390,7 +390,7 @@ GymEnv.new = function(log_path)
             return true
         elseif startswith(data, "save") then
             self:log_debug("[save] " .. data)
-            local name = tonumber(string.match(data, "save (.+)"))
+            local name = string.match(data, "save (.+)")
             if self.processor.backup ~= nil then
                 self.backup_data[name] = self.processor:backup()
             end
@@ -398,7 +398,7 @@ GymEnv.new = function(log_path)
             return true
         elseif startswith(data, "load") then
             self:log_debug("[load] " .. data)
-            local name = tonumber(string.match(data, "load (.+)"))
+            local name = string.match(data, "load (.+)")
             savestate.load(name)
             if self.processor.restore ~= nil then
                 self.processor:restore(self.backup_data[name])
