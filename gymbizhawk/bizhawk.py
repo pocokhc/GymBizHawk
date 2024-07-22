@@ -72,9 +72,15 @@ class BizHawkError(Exception):
 class BizHawkEnv(gym.Env):
     metadata = {"render_modes": ["rgb_array"]}
 
-    def __init__(self, render_mode: str | None = None, **kwargs):
+    def __init__(
+        self,
+        render_mode: str | None = None,
+        savestate_dir: str = "savestate",
+        **kwargs,
+    ):
         self.bizhawk = BizHawk(**kwargs)
         self.render_mode = render_mode
+        self.savestate_dir = savestate_dir
 
         self.bizhawk.boot()
         self.action_space = self.bizhawk.action_space
@@ -130,11 +136,14 @@ class BizHawkEnv(gym.Env):
     def backup(self):
         b = self.backup_count
         self.backup_count += 1
-        self.bizhawk.send(f"save _t{b}.dat")
+        os.makedirs(self.savestate_dir, exist_ok=True)
+        path = os.path.abspath(os.path.join(self.savestate_dir, f"t{b}.dat"))
+        self.bizhawk.send("save " + path)
         return b
 
-    def restore(self, data) -> None:
-        self.bizhawk.send(f"load _t{data}.dat")
+    def restore(self, dat) -> None:
+        path = os.path.abspath(os.path.join(self.savestate_dir, f"t{dat}.dat"))
+        self.bizhawk.send("load " + path)
 
 
 class BizHawk:
