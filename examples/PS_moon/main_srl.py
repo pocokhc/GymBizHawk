@@ -1,6 +1,6 @@
 """
 Sample code running with the reinforcement learning framework SRL
-v0.15.3
+v0.16.3
 https://github.com/pocokhc/simple_distributed_rl
 """
 
@@ -32,9 +32,9 @@ def _create_runner():
     )
     rl_config = rainbow.Config(multisteps=1, lr=0.0002, discount=0.99)
     rl_config.hidden_block.set_dueling_network((256, 256, 256))
-    rl_config.memory.set_proportional_memory()
-    rl_config.memory.warmup_size = 1000
-    rl_config.memory.capacity = 100_000
+    rl_config.set_proportional_memory()
+    rl_config.memory_warmup_size = 1000
+    rl_config.memory_capacity = 100_000
     rl_config.window_length = 4
     rl_config.memory_compress = False
 

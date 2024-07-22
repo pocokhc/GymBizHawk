@@ -96,10 +96,12 @@ EnvProcessor.new = function()
             return -100, true
         end
 
-        if math.abs(goal_y - y) < 5 then
-            return 0.1, false
-        else
+        if y - goal_y < -1 then
             return 0, false
+        elseif y - goal_y > 3 then
+            return 0, false
+        else
+            return 0.1, false
         end
     end
 
