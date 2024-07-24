@@ -1,4 +1,4 @@
-
+[README in English](README-en.md)
 
 [![(latest) release | GitHub](https://img.shields.io/github/release/pocokhc/GymBizHawk.svg?logo=github&style=popout)](https://github.com/pocokhc/GymBizHawk/releases/latest)
 
@@ -7,46 +7,45 @@
 これはマルチシステムエミュレータである[BizHawk](https://github.com/TASEmulators/BizHawk)と強化学習用の標準APIを提供する[Gymnasium(Gym)](https://github.com/Farama-Foundation/Gymnasium/tree/main)の連携ライブラリです。  
 GymのAPI上でBizHawkを動かすことを目的としています。
 
-# 1. Install/Download
-## 1-1. BizHawk install
+# 1. インストール
+## 1-1. BizHawkのインストール
 
-[BizHawk](https://github.com/TASEmulators/BizHawk) をインストールしてください。
-（version: 2.9.1）
+[BizHawk](https://github.com/TASEmulators/BizHawk) よりインストールしてください。
+（動作確認バージョン: 2.9.1）
 
-## 1-2. GymBizHawk install
-
-本フレームワークはダウンロードして使います。
-（Python version: 3.12.2）
+## 1-2. 本ライブラリのインストール
 
 ``` bash
 git clone https://github.com/pocokhc/GymBizHawk.git
 cd GymBizHawk
-pip install -r requirements.txt  # install libraries
-pip install .  # install GymBizHawk & register Gym
+pip install -r requirements.txt  # 必要ライブラリのインストール
+pip install .                    # GymBizHawkのインストール
 ```
 
-## 1-3. Sample Usage
+（動作確認バージョン: Python 3.12.3）
+
+## 1-3. 実行例
 
 ``` bash
-# set Environmental Variables
-> SET BIZHAWK_DIR="BizHawk dir path"
-> SET ROM_DIR="ROM path"
-# run
+# 環境変数の設定
+> SET BIZHAWK_DIR="BizHawkへのディレクトリパス"
+> SET ROM_PATH="ROMのパス"
+# 実行
 > python examples/main.py
 ```
 
-# 2. Customize
+# 2. カスタマイズ
 
-+ [Make Original Environment](https://pocokhc.github.io/GymBizHawk/pages/custom.html)
++ [オリジナル環境の作り方](https://pocokhc.github.io/GymBizHawk/pages/custom.html)
 
-## Samples
+## サンプル
 
-+ とりあえず動かしてみたい(I want to move it for now)
++ とりあえず動かしてみたい
     + examples/main.py
-+ Lua側を作って動かしてみる(I want to add the lua side and create it.)
++ Lua側を作って動かしてみる
     + examples/PS_moon/
     + examples/NES_SMB/
-+ 1stepの挙動も細かく制御して作成したい(I want to control and create the behavior of 1 step.)
++ 1stepの挙動も細かく制御して作成したい
     + examples/NES_DrMario/
 
 
