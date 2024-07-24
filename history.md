@@ -4,7 +4,7 @@
 1. [bizhawk] update: デフォルトで無音にする設定を追加
 1. [bizhawk] update: save/loadの保存先をフォルダに変更
 1. [bizhawk.lua] fix: save/loadのpathが数字になっていた不具合修正
-
+1. [README] update: 文言を見直して英語版を追加
 
 
 # v0.1.1
