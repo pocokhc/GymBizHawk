@@ -5,6 +5,7 @@ _*/
 
 BizHawk*/
 savestate/
+mlruns/
 
 # --- vscode
 .vscode/
