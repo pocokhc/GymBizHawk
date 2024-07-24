@@ -1,6 +1,6 @@
 """
 Sample code running with the reinforcement learning framework SRL
-v0.16.3
+v0.16.4
 https://github.com/pocokhc/simple_distributed_rl
 """
 
