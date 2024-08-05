@@ -2,6 +2,7 @@ import logging
 import os
 
 import gymnasium as gym
+
 from gymbizhawk import bizhawk  # noqa F401 # load GymBizhawk env
 
 logging.basicConfig(level=logging.INFO)
@@ -14,10 +15,10 @@ def main():
     env = gym.make(
         "BizHawk-v0",
         bizhawk_dir=os.environ["BIZHAWK_DIR"],
-        lua_file=os.path.join(os.path.dirname(__file__), "../gymbizhawk/rom.lua"),
+        lua_file=os.path.join(os.path.dirname(__file__), "../gymbizhawk/sample.lua"),
         mode="run",  # "run", "train", "debug"
         observation_type="image",  # "image", "value", "both"
-        setup_str_for_lua="1",  # load slot
+        setup_str_for_lua="1",  # option
     )
     env.reset()
 
