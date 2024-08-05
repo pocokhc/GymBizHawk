@@ -56,6 +56,7 @@ GymEnv.new = function(log_path)
     this.is_reset = false
     this.observation_type = ""
     this.backup_data = {}
+    this.wkdir_with_slash = ""
 
     if this.log_path ~= "" then
         local f = io.open(this.log_path, "w")
@@ -113,13 +114,17 @@ GymEnv.new = function(log_path)
         local setup_str
         local mode
         local silent
-        mode, self.observation_type, silent, setup_str = string.match(recv, "a|(.-)|(.-)|(.-)|(.+)")
+        mode, self.observation_type, silent, self.wkdir_with_slash, setup_str = string.match(recv, "a|(.-)|(.-)|(.-)|(.-)|(.+)")
+        if self.wkdir_with_slash == "_" then
+            self.wkdir_with_slash = ""
+        end
         if setup_str == "_" then
             setup_str = ""
         end
         self:log_info("mode            :" .. mode)
         self:log_info("observation_type:" .. self.observation_type)
         self:log_info("silent          :" .. silent)
+        self:log_info("wkdir           :" .. self.wkdir_with_slash)
         self:log_info("setup_str       :" .. setup_str)
         if silent == "0" then
             client.SetSoundOn(true)
@@ -401,12 +406,12 @@ GymEnv.new = function(log_path)
             if self.processor.backup ~= nil then
                 self.backup_data[name] = self.processor:backup()
             end
-            savestate.save(name)
+            savestate.save(self.wkdir_with_slash .. name)
             return true
         elseif startswith(data, "load") then
             self:log_debug("[load] " .. data)
             local name = string.match(data, "load (.+)")
-            savestate.load(name)
+            savestate.load(self.wkdir_with_slash .. name)
             if self.processor.restore ~= nil then
                 self.processor:restore(self.backup_data[name])
             end

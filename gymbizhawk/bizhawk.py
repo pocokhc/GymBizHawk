@@ -75,12 +75,10 @@ class BizHawkEnv(gym.Env):
     def __init__(
         self,
         render_mode: str | None = None,
-        savestate_dir: str = "savestate",
         **kwargs,
     ):
         self.bizhawk = BizHawk(**kwargs)
         self.render_mode = render_mode
-        self.savestate_dir = savestate_dir
 
         self.bizhawk.boot()
         self.action_space = self.bizhawk.action_space
@@ -136,14 +134,11 @@ class BizHawkEnv(gym.Env):
     def backup(self):
         b = self.backup_count
         self.backup_count += 1
-        os.makedirs(self.savestate_dir, exist_ok=True)
-        path = os.path.abspath(os.path.join(self.savestate_dir, f"t{b}.dat"))
-        self.bizhawk.send("save " + path)
+        self.bizhawk.send("save " + f"t{b}.dat")
         return b
 
     def restore(self, dat) -> None:
-        path = os.path.abspath(os.path.join(self.savestate_dir, f"t{dat}.dat"))
-        self.bizhawk.send("load " + path)
+        self.bizhawk.send("load " + f"t{dat}.dat")
 
 
 class BizHawk:
@@ -154,33 +149,31 @@ class BizHawk:
         mode: ModeTypes | str = ModeTypes.RUN,
         observation_type: ObservationTypes | str = ObservationTypes.VALUE,
         silent: bool = True,
+        lua_wkdir: str = "lua_wkdir",
         setup_str_for_lua: str = "",
         socket_ip: str = "127.0.0.1",
         socket_port: int = 30000,
         socket_buffer_size: int = 1024 * 1024,
         socket_timeout=None,
     ):
-        """_summary_
-
-        Args:
-            bizhawk_dir (str): _description_
-            lua_file (str): _description_
-            observation_type (Union[ObservationTypes, str], optional): _description_. Defaults to ObservationTypes.IMAGE.
-            setup_str_for_lua (str, optional): _description_. Defaults to "".
-            socket_ip (str, optional): _description_. Defaults to "127.0.0.1".
-            socket_port (int, optional): _description_. Defaults to 30000.
-            socket_buffer_size (int, optional): _description_. Defaults to 1024*1024.
-            socket_timeout (_type_, optional): _description_. Defaults to None.
-
-        Raises:
-            BizHawkError: _description_
-        """
         self.bizhawk_dir = os.path.abspath(bizhawk_dir)
         self.lua_file = os.path.abspath(lua_file)
         self.mode = ModeTypes.from_str(mode)
         self.observation_type = ObservationTypes.from_str(observation_type)
         self.silent = silent
-        self.setup_str_for_lua = setup_str_for_lua.replace("|", "")
+
+        self.lua_wkdir = lua_wkdir
+        if self.lua_wkdir != "":
+            self.lua_wkdir = os.path.abspath(self.lua_wkdir)
+            self.lua_wkdir = self.lua_wkdir.replace("\\", "/")
+            assert "|" not in self.lua_wkdir, f"'|' cannot be used. ({self.lua_wkdir})"
+            os.makedirs(self.lua_wkdir, exist_ok=True)
+            if self.lua_wkdir[-1] != "/":
+                self.lua_wkdir += "/"
+            logger.info(f"lua wkdir: {self.lua_wkdir}")
+
+        assert "|" not in setup_str_for_lua, f"'|' cannot be used. ({setup_str_for_lua})"
+        self.setup_str_for_lua = setup_str_for_lua
 
         self._send_count = 0
         self.emu = None
@@ -231,12 +224,14 @@ class BizHawk:
         # --- connect
         if not self.server.connect_wait():
             raise BizHawkError("connection fail.")
+        os.environ["GYMBIZHAWK"] = "0"
 
         # --- 1st send
-        s = "a|{}|{}|{}|{}".format(
+        s = "a|{}|{}|{}|{}|{}".format(
             self.mode.name,
             self.observation_type.name,
             "1" if self.silent else "0",
+            "_" if self.lua_wkdir == "" else self.lua_wkdir,
             "_" if self.setup_str_for_lua == "" else self.setup_str_for_lua,
         )
         logger.info(f"1st send data: {s}")

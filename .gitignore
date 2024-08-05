@@ -2,9 +2,10 @@
 _*.*
 !__init__.py
 _*/
+*.log
 
 BizHawk*/
-savestate/
+lua_wkdir/
 mlruns/
 
 # --- vscode
