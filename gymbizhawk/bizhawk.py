@@ -213,6 +213,7 @@ class BizHawk:
     def boot(self):
 
         # --- run bizhawk
+        os.environ["GYMBIZHAWK"] = "1"
         cmd = os.path.join(self.bizhawk_dir, "EmuHawk.exe")
         cmd += " --luaconsole"
         cmd += " --socket_ip={}".format(self.socket_ip)

@@ -120,7 +120,5 @@ EnvProcessor.new = function()
     return this
 end
 
-
----- main
-local env = bizhawk.GymEnv.new("_moon.log")
-env:run(EnvProcessor.new())
+-- main
+bizhawk.run(EnvProcessor.new())

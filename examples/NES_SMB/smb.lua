@@ -20,9 +20,6 @@ EnvProcessor.new = function()
     this.HALF_BLOCK_SIZE = 8
     this.ENEMY = 5
 
-    -- debug
-    this.key_skip = false
-
     this.setup = function(self, env, setup_str)
         self.env = env
         self.look_w = 9
@@ -175,7 +172,7 @@ EnvProcessor.new = function()
 
 
     this.step = function(self, action)
-        if self.key_skip == false then
+        if action ~= nil then
             self.env:setKeys({
                 "P1 Right",
                 action[1] and "P1 A" or "",
@@ -285,20 +282,5 @@ EnvProcessor.new = function()
     return this
 end
 
-
-if 1 == 1 then
-    ---- main
-    local env = bizhawk.GymEnv.new("_smb.log")
-    env:run(EnvProcessor.new())
-else
-    -- debug
-    local e = EnvProcessor.new()
-    e.key_skip = true
-    e:setup(bizhawk.GymEnv.new(""), "")
-    e.env:setMode("DEBUG")
-    e:reset()
-    emu.frameadvance()
-    while true do
-        e:step({ false, true, false })
-    end
-end
+-- main
+bizhawk.run(EnvProcessor.new())

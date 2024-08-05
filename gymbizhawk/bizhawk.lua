@@ -32,15 +32,16 @@ local function startswith(str, start)
     return string.sub(str, 1, string.len(start)) == start
 end
 
-local function getenv_safe(envVarName)
+local function getenv_safe(envVarName, default)
+    default = default or ""  -- default args
+
     local success, value = pcall(os.getenv, envVarName)
     if success then
         return value
     else
-        return nil
+        return default
     end
 end
-
 
 
 ---------------------------
@@ -49,7 +50,7 @@ end
 local GymEnv = {}
 GymEnv.new = function(log_path)
     local this = {}
-    this.log_path = log_path
+    this.log_path = log_path or "gymenv.log"
     this.processor = nil
     this.mode = ""
     this.speed = 100
@@ -542,8 +543,37 @@ GymEnv.new = function(log_path)
     return this
 end
 
+local luaRunCount = 0
+local function run(processor, log_path)
+    -- 直接実行した場合や2回目以降は直接envを実行する
+    luaRunCount = luaRunCount + 1
+    if getenv_safe("GYMBIZHAWK") ~= "1" then
+        luaRunCount = 999
+    end
+
+    print("luaRunCount: " .. luaRunCount)
+    local env = GymEnv.new(log_path)
+    if luaRunCount == 1 then
+        env:run(processor)
+    else
+        env:setMode("DEBUG")
+        processor:setup(env, "")
+        print("reset start")
+        processor:reset()
+        print("reset end")
+        emu.frameadvance()
+        while true do
+            processor:step(nil)
+        end
+    end
+
+    return env
+end
+
+
 return {
     GymEnv = GymEnv,
+    run = run,
     eval = eval,
     split = split,
     startswith = startswith,

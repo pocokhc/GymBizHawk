@@ -732,10 +732,8 @@ EnvProcessor.new = function()
     return this
 end
 
-
 ---- main
-local env = bizhawk.GymEnv.new("_drmario.log")
-env:run(EnvProcessor.new())
+bizhawk.run(EnvProcessor.new())
 
 ---- for test
 return {
