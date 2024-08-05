@@ -79,29 +79,29 @@ EnvProcessor.new = function()
         local goal_y = mainmemory.read_s16_le(0x1119EC)
 
         if lv == 6 then
-            return 100, true
+            return 100, true, false
         end
         if self.prev_lv + 1 == lv then
             self.prev_lv = lv
             self:skip_start()
-            return 100, false
+            return 100, false, false
         end
 
         if y <= 0 then
-            return -100, true
+            return -100, true, false
         elseif y >= 240 then
-            return -100, true
+            return -100, true, false
         end
         if x > 240 then
-            return -100, true
+            return -100, true, false
         end
 
         if y - goal_y < -1 then
-            return 0, false
+            return 0, false, false
         elseif y - goal_y > 3 then
-            return 0, false
+            return 0, false, false
         else
-            return 0.1, false
+            return 0.1, false, false
         end
     end
 

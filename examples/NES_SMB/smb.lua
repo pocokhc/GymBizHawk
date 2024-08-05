@@ -191,18 +191,18 @@ EnvProcessor.new = function()
 
         -- goal
         if mainmemory.readbyte(0xE) == 0x4 then
-            return 100, true
+            return 100, true, false
         end
 
         -- dead
         if mainmemory.readbyte(0xE) == 11 then
-            return -1, true
+            return -1, true, false
         end
         if self.mario_y > 210 then
-            return -1, true
+            return -1, true, false
         end
         if mainmemory.readbyte(0xE) == 0x0 then
-            return -1, true
+            return -1, true, false
         end
 
         -- 進んだら
@@ -215,11 +215,10 @@ EnvProcessor.new = function()
             -- 一定時間進まなかったら終わり
             self._stepout = self._stepout + 1
             if self._stepout > 60 * 2 then
-                return -1, true
+                return -1, false, true
             end
         end
-
-        return reward, false
+        return reward, false, false
     end
 
     this.getObservation = function(self)

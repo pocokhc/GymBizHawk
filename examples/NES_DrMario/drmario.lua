@@ -157,7 +157,8 @@ EnvProcessor.new = function()
         local r = action[3] and "up" or "right"
         local changeColor = action[4]
         local reward = 0
-        local done = false
+        local terminated = false
+        local truncated = false
 
         if self.env.mode ~= "TRAIN" then
             -- target pos
@@ -179,12 +180,12 @@ EnvProcessor.new = function()
 
         if result == "clear" then
             reward = 1
-            done = true
+            terminated = true
         elseif result == "gameover" then
             reward = -1
-            done = true
+            terminated = true
         end
-        return reward, done
+        return reward, terminated, truncated
     end
 
     this._astarCreateNode = function(self, parent, x, y, r, c, cmd1, cmd2, description, startX, startY, goalX, goalY)

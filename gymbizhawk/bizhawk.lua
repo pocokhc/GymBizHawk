@@ -364,21 +364,23 @@ GymEnv.new = function(log_path)
 
             ---- 2. step
             local prev_frame = emu.framecount()
-            local reward, done = self.processor:step(acts)
+            local reward, terminated, truncated = self.processor:step(acts)
             self.is_reset = false
-            self:log_debug("[step] reward: " .. tostring(reward) .. ", done: " .. tostring(done))
+            self:log_debug("[step] reward: " .. tostring(reward) .. ", terminated: " .. tostring(terminated) .. ", truncated: " .. tostring(truncated))
             if prev_frame == emu.framecount() then
                 -- step内でframeが進んでいない場合進める
                 emu.frameadvance()
                 self:log_debug("frameadvance")
             end
 
-            ----- 3. send: invalid_actions "|" reward "|" done "|" observation
-            -- reward: float
-            -- done  : "0" or "1"
+            ----- 3. send: invalid_actions "|" reward "|" terminated "|" truncated "|" observation
+            -- reward     : float
+            -- terminated : "0" or "1"
+            -- truncated  : "0" or "1"
             local s = self:_encodeInvalidActions()
             s = s .. "|" .. reward
-            s = s .. "|" .. (done and "1" or "0")
+            s = s .. "|" .. (terminated and "1" or "0")
+            s = s .. "|" .. (truncated and "1" or "0")
             s = s .. "|"
             self:_sendExtendObservtion(s)
 

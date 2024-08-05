@@ -95,8 +95,8 @@ class BizHawkEnv(gym.Env):
         return state, {}
 
     def step(self, action: list):
-        state, reward, done = self.bizhawk.step(action)
-        return state, reward, done, False, {}
+        state, reward, terminated, truncated = self.bizhawk.step(action)
+        return state, reward, terminated, truncated, {"backup": self.backup_count}
 
     def render(self):  # super
         if self.render_mode != "rgb_array":
@@ -437,16 +437,18 @@ class BizHawk:
         self.send(f"step {act_str}")
 
         # --- 3. recv
-        # invalid_actions "|" reward "|" done "|" observation
+        # invalid_actions "|" reward "|" terminated "|" truncated "|" observation
         # reward     : float
-        # done       : "0" or "1"
+        # terminated : "0" or "1"
+        # truncated  : "0" or "1"
         recv_str_list = self.recv(enable_split=True)
         self.invalid_actions = self._decode_invalid_actions(recv_str_list[0])
         reward = float(recv_str_list[1])
-        done = True if recv_str_list[2] == "1" else False
-        state, img = self._recv_extend_observation(recv_str_list[3])
+        terminated = True if recv_str_list[2] == "1" else False
+        truncated = True if recv_str_list[3] == "1" else False
+        state, img = self._recv_extend_observation(recv_str_list[4])
         self.step_img = img
-        return state, reward, done
+        return state, reward, terminated, truncated
 
     # -----------------------------
     # other
