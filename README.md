@@ -52,3 +52,17 @@ pip install .                    # GymBizHawkのインストール
 # 3. Overview
 
 ![](diagrams/overview.drawio.png)
+
+
+# 4. 開発環境
+
++ PC1
+  + windows11
+  + CPUx1: Core i7-8700 3.2GHz
+  + GPUx1: NVIDIA GeForce GTX 1060 3GB
+  + memory 48GB
++ PC2
+  + windows11
+  + CPUx1: Core i9-12900 2.4GHz
+  + GPUx1: NVIDIA GeForce RTX 3060 12GB
+  + memory 32GB
