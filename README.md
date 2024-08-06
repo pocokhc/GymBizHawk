@@ -13,13 +13,16 @@ GymのAPI上でBizHawkを動かすことを目的としています。
 [BizHawk](https://github.com/TASEmulators/BizHawk) よりインストールしてください。
 （動作確認バージョン: 2.9.1）
 
-## 1-2. 本ライブラリのインストール
+## 1-2. 本ライブラリのダウンロード
 
 ``` bash
 git clone https://github.com/pocokhc/GymBizHawk.git
 cd GymBizHawk
 pip install -r requirements.txt  # 必要ライブラリのインストール
-pip install .                    # GymBizHawkのインストール
+
+# 本ライブラリのインストール
+# ※gymbizhawkディレクトリにpythonのパスがあればインストールしなくても使えます
+pip install .
 ```
 
 （動作確認バージョン: Python 3.12.3）

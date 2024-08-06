@@ -19,7 +19,10 @@ Please install from [BizHawk](https://github.com/TASEmulators/BizHawk).
 git clone https://github.com/pocokhc/GymBizHawk.git
 cd GymBizHawk
 pip install -r requirements.txt  # Installing required libraries
-pip install .                    # Installing GymBizHawk
+
+# Installing this library
+# ※If you have the python path in the gymbizhawk directory, you can use it without installing it.
+pip install .
 ```
 
 (Verified Version: Python 3.12.3)
