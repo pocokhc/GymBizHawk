@@ -218,6 +218,19 @@ EnvProcessor.new = function()
         return reward, false, false
     end
 
+    this.backup = function(self)
+        local d = {}
+        d[#d + 1] = self._max_stage_mario_x
+        d[#d + 1] = self._stepout
+        return d
+    end
+    this.restore = function(self, d)
+        self._max_stage_mario_x = d[1]
+        self._stepout = d[2]
+        self:_read_memory()
+    end
+
+
     this.getObservation = function(self)
         local d = {}
         --d[#d + 1] = self.mario_x

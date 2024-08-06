@@ -13,6 +13,7 @@ def main():
         "BizHawk-v0",
         bizhawk_dir=os.environ["BIZHAWK_DIR"],
         lua_file=os.path.join(os.path.dirname(__file__), "smb.lua"),
+        # mode="debug",
     )
     env.reset()
 
