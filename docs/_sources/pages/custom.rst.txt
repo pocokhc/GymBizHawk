@@ -1,24 +1,23 @@
 .. _custom_env:
 
-===========================
-Make Original Environment
-===========================
+==============================
+Making a Custom environment
+==============================
 
-luaやpythonを実装することで動きをカスタムすることができます。
-概要は以下です。
+| luaやpythonを実装することで動きをカスタムすることができます。
+| 概要は以下です。
 
 .. image:: ../../diagrams/overview.drawio.png
 
-
-必須はLua側のUserProcessorでBizHawkの操作を記載します。
-Python側のUserEnvはオプションでGymに渡す直前にコードを書きたい場合に記載します。
+| 必須はLua側のUserProcessorでBizHawkの操作を記載します。
+| Python側のUserEnvはオプションでGymに渡す直前にコードを書きたい場合に記載します。
 
 
 UserProcessor(Lua)
 =======================
 
-BizHawkへの操作を記載します。
-テンプレートは以下です。
+| BizHawkへの操作を記載します。
+| テンプレートは以下です。('gymbizhawk/sample.lua'も参考にしてください)
 
 .. code-block:: Lua
 
@@ -66,9 +65,8 @@ BizHawkへの操作を記載します。
       return this
    end
 
-   ---- GymEnvの実行を書きます。log名は任意です。
-   local env = bizhawk.GymEnv.new("_custom.log")
-   env:run(EnvProcessor.new())
+   ---- mainの実行です。おまじないで書いてください。
+   bizhawk.run(EnvProcessor.new())
 
 
 ActionTypes / ObservationType

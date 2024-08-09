@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Make Original Environment &mdash; GymBizHawk 0.1.0.3 ドキュメント</title>
+  <title>Making a Custom environment &mdash; GymBizHawk 0.2.0 ドキュメント</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
 
@@ -15,10 +15,10 @@
   
         <script src="../_static/jquery.js?v=5d32c60e"></script>
         <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script src="../_static/documentation_options.js?v=696f8bcc"></script>
-        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/documentation_options.js?v=0a962762"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
         <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
-        <script src="../_static/translations.js?v=4dbe4bdc"></script>
+        <script src="../_static/translations.js?v=91613774"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="索引" href="../genindex.html" />
     <link rel="search" title="検索" href="../search.html" />
@@ -46,7 +46,7 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Make Original Environment</a><ul>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Making a Custom environment</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#userprocessor-lua">UserProcessor(Lua)</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#actiontypes-observationtype">ActionTypes / ObservationType</a></li>
 </ul>
@@ -70,7 +70,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">Make Original Environment</li>
+      <li class="breadcrumb-item active">Making a Custom environment</li>
       <li class="wy-breadcrumbs-aside">
             <a href="../_sources/pages/custom.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -80,17 +80,23 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="make-original-environment">
-<span id="custom-env"></span><h1>Make Original Environment<a class="headerlink" href="#make-original-environment" title="Link to this heading"></a></h1>
-<p>luaやpythonを実装することで動きをカスタムすることができます。
-概要は以下です。</p>
+  <section id="making-a-custom-environment">
+<span id="custom-env"></span><h1>Making a Custom environment<a class="headerlink" href="#making-a-custom-environment" title="Link to this heading"></a></h1>
+<div class="line-block">
+<div class="line">luaやpythonを実装することで動きをカスタムすることができます。</div>
+<div class="line">概要は以下です。</div>
+</div>
 <img alt="../_images/overview.drawio.png" src="../_images/overview.drawio.png" />
-<p>必須はLua側のUserProcessorでBizHawkの操作を記載します。
-Python側のUserEnvはオプションでGymに渡す直前にコードを書きたい場合に記載します。</p>
+<div class="line-block">
+<div class="line">必須はLua側のUserProcessorでBizHawkの操作を記載します。</div>
+<div class="line">Python側のUserEnvはオプションでGymに渡す直前にコードを書きたい場合に記載します。</div>
+</div>
 <section id="userprocessor-lua">
 <h2>UserProcessor(Lua)<a class="headerlink" href="#userprocessor-lua" title="Link to this heading"></a></h2>
-<p>BizHawkへの操作を記載します。
-テンプレートは以下です。</p>
+<div class="line-block">
+<div class="line">BizHawkへの操作を記載します。</div>
+<div class="line">テンプレートは以下です。('gymbizhawk/sample.lua'も参考にしてください)</div>
+</div>
 <div class="highlight-Lua notranslate"><div class="highlight"><pre><span></span><span class="c1">-- gymbizhawk/bizhawk.lua へのパスをこのファイルからの相対パスで指定しロードします</span>
 <span class="nb">package.path</span> <span class="o">=</span> <span class="nb">package.path</span> <span class="o">..</span> <span class="s1">&#39;;../../gymbizhawk/bizhawk.lua&#39;</span>
 <span class="kd">local</span> <span class="n">bizhawk</span> <span class="o">=</span> <span class="nb">require</span><span class="p">(</span><span class="s1">&#39;bizhawk&#39;</span><span class="p">)</span>
@@ -135,9 +141,8 @@ Python側のUserEnvはオプションでGymに渡す直前にコードを書き�
    <span class="kr">return</span> <span class="n">this</span>
 <span class="kr">end</span>
 
-<span class="c1">---- GymEnvの実行を書きます。log名は任意です。</span>
-<span class="kd">local</span> <span class="n">env</span> <span class="o">=</span> <span class="n">bizhawk</span><span class="p">.</span><span class="n">GymEnv</span><span class="p">.</span><span class="n">new</span><span class="p">(</span><span class="s2">&quot;_custom.log&quot;</span><span class="p">)</span>
-<span class="n">env</span><span class="p">:</span><span class="n">run</span><span class="p">(</span><span class="n">EnvProcessor</span><span class="p">.</span><span class="n">new</span><span class="p">())</span>
+<span class="c1">---- mainの実行です。おまじないで書いてください。</span>
+<span class="n">bizhawk</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="n">EnvProcessor</span><span class="p">.</span><span class="n">new</span><span class="p">())</span>
 </pre></div>
 </div>
 <section id="actiontypes-observationtype">
