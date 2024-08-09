@@ -11,7 +11,7 @@ mlruns/
 # --- vscode
 .vscode/
 !.vscode/extensions.json
-!.vscode/setting.json
+!.vscode/settings.json
 
 
 # --- sphinx
