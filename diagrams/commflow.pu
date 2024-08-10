@@ -1,0 +1,33 @@
+@startuml commflow
+
+participant Gym
+participant SockerServer
+participant BizHawk
+
+... - connect socket - ...
+Gym -> SockerServer ** : create
+
+SockerServer -> SockerServer: wait
+activate SockerServer
+
+Gym -> BizHawk ** : subprocess(lua file)
+BizHawk -> SockerServer: connect
+deactivate SockerServer
+
+... - communication - ...
+Gym -> BizHawk : send(mode)
+BizHawk -> Gym : send(space)
+
+loop
+    alt reset
+        Gym -> BizHawk : reset
+        return state
+    else step
+        Gym -> BizHawk : step
+        return state, reward, terminated, truncated
+    else other
+        ... Other commands ...
+    end
+end
+
+@enduml

@@ -31,5 +31,11 @@
     // --- lua
     "[lua]": {
         "editor.formatOnSave": true
-    }
+    },
+
+    // --- plant uml
+    "plantuml.exportFormat": "png",
+    "plantuml.exportOutDir": ".",
+    "plantuml.exportSubFolder": false
+
 }

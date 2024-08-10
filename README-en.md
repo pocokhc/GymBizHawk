@@ -57,8 +57,11 @@ pip install .
 
 ![](diagrams/overview.drawio.png)
 
+**Flow overview**
 
-# 7. Development environment
+![](diagrams/commflow.png)
+
+# 4. Development environment
 
 + PC1
   + windows11
