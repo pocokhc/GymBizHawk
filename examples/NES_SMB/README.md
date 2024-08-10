@@ -1,7 +1,7 @@
 
-# SuperMarioBros
+# SuperMarioBros 1-1
 
-スーパーマリオブラザーズを実行するサンプルです。
+スーパーマリオブラザーズ1-1を実行するサンプルです。
 
 
 # How to play

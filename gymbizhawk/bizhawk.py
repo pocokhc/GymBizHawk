@@ -72,13 +72,9 @@ class BizHawkError(Exception):
 class BizHawkEnv(gym.Env):
     metadata = {"render_modes": ["rgb_array"]}
 
-    def __init__(
-        self,
-        render_mode: str | None = None,
-        **kwargs,
-    ):
-        self.bizhawk = BizHawk(**kwargs)
+    def __init__(self, render_mode: str | None = None, **kwargs):
         self.render_mode = render_mode
+        self.bizhawk = BizHawk(**kwargs)
 
         self.bizhawk.boot()
         self.action_space = self.bizhawk.action_space
@@ -110,7 +106,6 @@ class BizHawkEnv(gym.Env):
         if self.screen is None:
             pygame.init()
             self.screen = pygame.Surface((self.bizhawk.image_shape[1], self.bizhawk.image_shape[0]))
-            self.clock = pygame.time.Clock()
 
         if self.bizhawk.step_img is None:
             img = self.bizhawk.fetch_image(self.bizhawk.image_shape)
@@ -180,10 +175,8 @@ class BizHawk:
         self.image_shape = (0, 0)
         self.platform = ""
 
-        # -- init
+        # -- socket
         self.server = SocketServer(socket_ip, socket_port, socket_buffer_size, socket_timeout)
-        self.socket_ip = socket_ip
-        self.socket_port = self.server.port
 
     def __enter__(self):
         return self
@@ -216,8 +209,8 @@ class BizHawk:
         os.environ["GYMBIZHAWK"] = "1"
         cmd = os.path.join(self.bizhawk_dir, "EmuHawk.exe")
         cmd += " --luaconsole"
-        cmd += " --socket_ip={}".format(self.socket_ip)
-        cmd += " --socket_port={}".format(self.socket_port)
+        cmd += " --socket_ip={}".format(self.server.host)
+        cmd += " --socket_port={}".format(self.server.port)
         cmd += " --lua={}".format(self.lua_file)
         logger.info(f"bizhawk run: {cmd}")
         self.emu = subprocess.Popen(cmd)
@@ -470,17 +463,17 @@ class SocketServer:
         buffer_size: int = 1024 * 128,
         timeout: int | None = None,
     ):
+        self.host = host
+        self.port = port
         self.buffer_size = buffer_size
         self.timeout = timeout
-        self.port = port
-
         self.conn = None
         self.selector = None
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         for _ in range(100):
             try:
-                self.sock.bind((host, self.port))
+                self.sock.bind((self.host, self.port))
                 break
             except OSError as e:
                 if e.errno == errno.EADDRINUSE:
@@ -490,10 +483,11 @@ class SocketServer:
                 else:
                     self.close()
                     raise
-        logger.info(f"socket wait: {host}:{self.port} (timeout: {timeout})")
+        logger.info(f"socket wait: {self.host}:{self.port} (timeout: {timeout})")
         self.sock.listen(1)
         self.sock.setblocking(False)
 
+        # timeout処理用
         self.selector = selectors.DefaultSelector()
         self.selector.register(self.sock, selectors.EVENT_READ)
 

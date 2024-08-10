@@ -71,7 +71,7 @@ GymEnv.new = function(log_path)
     end
 
     this.run = function(self, processor)
-        -- bizahawk外から実行した場合は何もしない
+        -- bizhawk外から実行した場合は何もしない
         if emu == nil then
             self:log_info("Run it from BizHawk.")
             self:close()
@@ -374,7 +374,7 @@ GymEnv.new = function(log_path)
                 self:log_debug("frameadvance")
             end
 
-            ----- 3. send: invalid_actions "|" reward "|" terminated "|" truncated "|" observation
+            ---- 3. send: invalid_actions "|" reward "|" terminated "|" truncated "|" observation
             -- reward     : float
             -- terminated : "0" or "1"
             -- truncated  : "0" or "1"
