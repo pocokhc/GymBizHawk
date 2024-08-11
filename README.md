@@ -4,8 +4,13 @@
 
 # GymBizhawk
 
-これはマルチシステムエミュレータである[BizHawk](https://github.com/TASEmulators/BizHawk)と強化学習用の標準APIを提供する[Gymnasium(Gym)](https://github.com/Farama-Foundation/Gymnasium/tree/main)の連携ライブラリです。  
+これはマルチシステムエミュレータである[BizHawk](https://github.com/TASEmulators/BizHawk)と強化学習用の標準APIを提供する[Gymnasium(Gym)](https://github.com/Farama-Foundation/Gymnasium/tree/main)の連携フレームワークです。  
 GymのAPI上でBizHawkを動かすことを目的としています。
+
+**解説記事（Qiita）**
+
+https://qiita.com/pocokhc/items/031fbb3e65b0450bd2a3
+
 
 # 1. インストール
 ## 1-1. BizHawkのインストール

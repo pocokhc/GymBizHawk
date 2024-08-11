@@ -4,8 +4,16 @@
 
 # GymBizhawk
 
-This is a library that links [BizHawk](https://github.com/TASEmulators/BizHawk), a multi-system emulator, and [Gymnasium(Gym)](https://github.com/Farama-Foundation/Gymnasium/tree/main), which provides a standard API for reinforcement learning.
+This is a collaboration framework between [BizHawk](https://github.com/TASEmulators/BizHawk), a multi-system emulator, and [Gymnasium(Gym)](https://github.com/Farama-Foundation/Gymnasium/tree/main), which provides a standard API for reinforcement learning.
 The purpose is to run BizHawk on the Gym API.
+
+
+**Commentary(Qiita)**
+
+This commentary is in Japanese.
+
+https://qiita.com/pocokhc/items/031fbb3e65b0450bd2a3
+
 
 # 1. Install
 ## 1-1. Installing BizHawk
