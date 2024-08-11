@@ -1,4 +1,9 @@
 
+# v0.2.1
+
+1. [examples] update: SMBとmoonのパラメータを調整
+
+
 # v0.2.0
 
 ・SRLv0.17.0に合わせて修正
