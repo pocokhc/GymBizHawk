@@ -88,18 +88,18 @@ EnvProcessor.new = function()
         end
 
         if y <= 0 then
-            return -100, true, false
+            return -10, true, false
         elseif y >= 240 then
-            return -100, true, false
+            return -10, true, false
         end
         if x > 240 then
-            return -100, true, false
+            return -10, true, false
         end
 
         if y - goal_y < -1 then
-            return 0, false, false
+            return 0.01, false, false
         elseif y - goal_y > 3 then
-            return 0, false, false
+            return -0.01, false, false
         else
             return 0.1, false, false
         end
@@ -112,6 +112,7 @@ EnvProcessor.new = function()
         d[#d + 1] = mainmemory.read_s16_le(0x1119E6) -- ay
         --d[#d + 1] = mainmemory.read_s16_le(0x1119E8) -- x
         d[#d + 1] = y
+        d[#d + 1] = goal_y
         d[#d + 1] = goal_y - y
         --d[#d + 1] = mainmemory.readbyte(0x1119EE) -- lv
         return d

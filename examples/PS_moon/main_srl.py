@@ -7,7 +7,6 @@ https://github.com/pocokhc/simple_distributed_rl
 import os
 
 import mlflow
-import numpy as np
 import srl
 from srl.algorithms import rainbow
 from srl.utils import common
@@ -31,13 +30,17 @@ def _create_runner():
             # mode="DEBUG",
         ),
     )
-    rl_config = rainbow.Config(multisteps=1, lr=0.0002, discount=0.99)
+    rl_config = rainbow.Config(
+        multisteps=1,
+        lr=0.0002,
+        discount=0.999,
+        memory_warmup_size=1000,
+        memory_capacity=100_000,
+        memory_compress=False,
+        window_length=4,
+    )
     rl_config.hidden_block.set_dueling_network((256, 256, 256))
     rl_config.set_proportional_memory()
-    rl_config.memory_warmup_size = 1000
-    rl_config.memory_capacity = 100_000
-    rl_config.window_length = 4
-    rl_config.memory_compress = False
 
     runner = srl.Runner(env_config, rl_config)
     runner.model_summary()
@@ -50,7 +53,7 @@ def train():
     runner.set_mlflow(experiment_name="BizHawk-moon")
 
     # runner.train(max_train_count=100)  # debug
-    runner.train_mp(actor_num=1, max_train_count=1_000_000)
+    runner.train_mp(actor_num=1, max_train_count=500_000)
 
 
 def eval():
@@ -58,12 +61,14 @@ def eval():
     runner.load_parameter_from_mlflow(experiment_name="BizHawk-moon")
 
     # --- eval
-    rewards = runner.evaluate(max_episodes=10)
+    rewards = runner.evaluate(max_episodes=1)
     print(rewards)
-    print(np.mean(rewards))
 
     # --- view
-    runner.animation_save_gif(os.path.join(base_dir, "_moon.gif"))
+    runner.animation_save_gif(
+        os.path.join(base_dir, "_moon.gif"),
+        # max_steps=770,  # LV1
+    )
 
 
 if __name__ == "__main__":
