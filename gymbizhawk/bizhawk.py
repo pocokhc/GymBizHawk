@@ -119,9 +119,12 @@ class BizHawkEnv(gym.Env):
     # ------------------------------------------
     # SRL
     # ------------------------------------------
-    def setup(self, rendering: bool, **kwargs):
-        if not rendering:
-            self.bizhawk.set_mode(ModeTypes.TRAIN)
+    def setup(self, training: bool, **kwargs):
+        if self.bizhawk.mode != ModeTypes.DEBUG:
+            if training:
+                self.bizhawk.set_mode(ModeTypes.TRAIN)
+            else:
+                self.bizhawk.set_mode(ModeTypes.RUN)
 
     def get_invalid_actions(self):
         return self.bizhawk.get_invalid_actions()
