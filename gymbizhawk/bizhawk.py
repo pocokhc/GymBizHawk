@@ -25,6 +25,7 @@ class ModeTypes(enum.Enum):
     DEBUG = enum.auto()
     TRAIN = enum.auto()
     RUN = enum.auto()
+    RECORD = enum.auto()
 
     @staticmethod
     def get_names() -> list[str]:
@@ -120,7 +121,7 @@ class BizHawkEnv(gym.Env):
     # SRL
     # ------------------------------------------
     def setup(self, training: bool, **kwargs):
-        if self.bizhawk.mode != ModeTypes.DEBUG:
+        if self.bizhawk.mode not in [ModeTypes.DEBUG, ModeTypes.RECORD]:
             if training:
                 self.bizhawk.set_mode(ModeTypes.TRAIN)
             else:
@@ -191,7 +192,7 @@ class BizHawk:
         self.close()
 
     def close(self):
-        if self.mode == ModeTypes.DEBUG:
+        if self.mode in [ModeTypes.DEBUG, ModeTypes.RECORD]:
             self.send("frameadvance_loop")
             input("closing. continue> ")
         self.send("close")

@@ -163,24 +163,19 @@ GymEnv.new = function(log_path)
 
         ---- emu setting
         self:log_debug("[reset]")
-        if mode ~= "DEBUG" then
+        if mode == "DEBUG" then
+            self:log_info("[DEBUG] Paused. Run with frameadvance.")
+        elseif mode == "RECORD" then
+            self:log_info("[RECORD] Paused. Run with frameadvance.")
+        else
             self:log_debug("pause, speed 800, unpause")
             self.mode = "TRAIN"
-            client.pause()
             client.speedmode(800)
             self.speed = 800
             client.unpause()
-        else
-            self:log_info("[DEBUG] Paused. Run with frameadvance.")
         end
-        self.processor:reset()
-        if mode ~= "DEBUG" then
-            self:log_debug("speed 100")
-            client.speedmode(100)
-            self.speed = 100
-            self.mode = ""
-        end
-        self.is_reset = true
+        self.processor:reset()        self.is_reset = true
+        self.mode = ""
         self:setMode(mode)
 
         ---- 1st send
@@ -253,6 +248,11 @@ GymEnv.new = function(log_path)
             client.speedmode(100)
             self.speed = 100
             self:log_info("[DEBUG] Paused. Run with frameadvance.")
+        elseif self.mode == "RECORD" then
+            self:log_info("mode RECORD: speed 100, unpaused.")
+            client.speedmode(100)
+            self.speed = 100
+            client.unpause()
         else
             self:log_info("mode RUN: speed 100, unpaused.")
             client.speedmode(100)
