@@ -170,6 +170,8 @@ GymEnv.new = function(log_path)
             client.speedmode(800)
             self.speed = 800
             client.unpause()
+        else
+            self:log_info("[DEBUG] Paused. Run with frameadvance.")
         end
         self.processor:reset()
         if mode ~= "DEBUG" then
@@ -250,7 +252,7 @@ GymEnv.new = function(log_path)
         elseif self.mode == "DEBUG" then
             client.speedmode(100)
             self.speed = 100
-            self:log_info("mode DEBUG: Run with frameadvance.")
+            self:log_info("[DEBUG] Paused. Run with frameadvance.")
         else
             self:log_info("mode RUN: speed 100, unpaused.")
             client.speedmode(100)
@@ -389,7 +391,14 @@ GymEnv.new = function(log_path)
         end
 
         ---- functions
-        if data == "frameadvance" then
+        if data == "frameadvance_loop" then
+            self:log_info("[frameadvance_loop] Paused. Run with frameadvance.")
+            client.pause()
+            while true do
+                emu.frameadvance()
+            end
+            return true
+        elseif data == "frameadvance" then
             self:log_debug("[frameadvance]")
             client.pause()
             emu.frameadvance()

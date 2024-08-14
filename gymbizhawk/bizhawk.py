@@ -192,7 +192,7 @@ class BizHawk:
 
     def close(self):
         if self.mode == ModeTypes.DEBUG:
-            self.send("frameadvance")
+            self.send("frameadvance_loop")
             input("closing. continue> ")
         self.send("close")
         self.server.close()
