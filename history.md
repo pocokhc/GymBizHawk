@@ -4,6 +4,12 @@
 1. [examples] update: SMBとmoonのパラメータを調整
 
 
+**Bug Fixes**
+
+1. [gymbizhawk] fix: debug時にsetup時のmode指定がおかしかったので修正
+1. [gymbizhawk] update: debug時にログを追加と挙動を改善（特に終了時にbizhawk側を操作できるように）
+
+
 # v0.2.0
 
 ・SRLv0.17.0に合わせて修正
