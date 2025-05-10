@@ -5,6 +5,7 @@ import os
 import selectors
 import socket
 import subprocess
+from typing import Optional
 
 import cv2
 import gymnasium as gym
@@ -71,7 +72,7 @@ class BizHawkError(Exception):
 
 
 class BizHawkEnv(gym.Env):
-    metadata = {"render_modes": ["rgb_array"]}
+    metadata = {"render_modes": ["rgb_array"], "render_fps": 60}
 
     def __init__(self, render_mode: str | None = None, **kwargs):
         self.render_mode = render_mode
@@ -87,7 +88,8 @@ class BizHawkEnv(gym.Env):
     def close(self):
         self.bizhawk.close()
 
-    def reset(self):
+    def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
+        super().reset(seed=seed)
         state = self.bizhawk.reset()
         return state, {}
 
@@ -208,7 +210,6 @@ class BizHawk:
                 self.emu = None
 
     def boot(self):
-
         # --- run bizhawk
         os.environ["GYMBIZHAWK"] = "1"
         cmd = os.path.join(self.bizhawk_dir, "EmuHawk.exe")
@@ -586,9 +587,7 @@ class SocketServer:
                         except ValueError:
                             logger.warning(f"Unable to read recv data size number: {data[:1000]}")
                         if msg_len > 0 and len(data) != msg_len:
-                            logger.warning(
-                                f"recv data size is different: recv size {len(data)}!={msg_len}, {data[:1000]}"
-                            )
+                            logger.warning(f"recv data size is different: recv size {len(data)}!={msg_len}, {data[:1000]}")
                     logger.debug("recv: {}".format(data[:100]))
 
                     # --- closeだけ別処理
