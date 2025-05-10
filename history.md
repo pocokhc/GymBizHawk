@@ -1,8 +1,21 @@
 
+# v0.3.0
+
+・SRLv1.1.1に合わせて修正
+・gymnasium==1.1.1に合わせて修正
+・pypi準備
+
+**Updates**
+
+1. [vscode] change: pypi準備+ruffに対応
+1. [gymbizhawk.bizhawk] update: gymnasium==1.1.1に対応
+1. [examples] update: SRLv1.1.1に合わせて修正
+
+
 # v0.2.1
 
 1. [examples] update: SMBとmoonのパラメータを調整
-
+1. [gymbizhawk] new: modeにRECORDを追加
 
 **Bug Fixes**
 
