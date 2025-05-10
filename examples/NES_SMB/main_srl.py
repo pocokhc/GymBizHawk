@@ -1,6 +1,6 @@
 """
 Sample code running with the reinforcement learning framework SRL
-v0.17.0
+v1.1.1
 https://github.com/pocokhc/simple_distributed_rl
 """
 
@@ -36,16 +36,15 @@ def _create_runner():
         epsilon=0.1,
         discount=0.999,
         target_model_update_interval=5000,
-        memory_warmup_size=5_000,
-        memory_capacity=100_000,
-        memory_compress=False,
         window_length=8,
     )
-    rl_config.hidden_block.set_dueling_network((512, 512, 512))
-    rl_config.set_proportional_memory()
+    rl_config.memory.warmup_size = 5000
+    rl_config.memory.capacity = 100_000
+    rl_config.memory.compress = False
+    rl_config.memory.set_proportional()
+    rl_config.hidden_block.set_dueling_network((512,))
 
     runner = srl.Runner(env_config, rl_config)
-    runner.model_summary()
     return runner
 
 
@@ -61,6 +60,7 @@ def train():
 def eval():
     runner = _create_runner()
     runner.load_parameter_from_mlflow(experiment_name="BizHawk-SMB")
+    runner.model_summary()
 
     # --- eval
     rewards = runner.evaluate(max_episodes=1)
