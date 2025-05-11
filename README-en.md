@@ -19,7 +19,7 @@ https://qiita.com/pocokhc/items/031fbb3e65b0450bd2a3
 ## 1-1. Installing BizHawk
 
 Please install from [BizHawk](https://github.com/TASEmulators/BizHawk).
-(Verified Version: 2.9.1)
+(Verified Version: 2.10.0)
 
 ## 1-2. Installing this library
 
@@ -33,7 +33,7 @@ pip install -r requirements.txt  # Installing required libraries
 pip install .
 ```
 
-(Verified Version: Python 3.12.3)
+(Verified Version: Python 3.13.3)
 
 
 ## 1-3. Sample Usage

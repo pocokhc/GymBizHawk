@@ -16,7 +16,7 @@ https://qiita.com/pocokhc/items/031fbb3e65b0450bd2a3
 ## 1-1. BizHawkのインストール
 
 [BizHawk](https://github.com/TASEmulators/BizHawk) よりインストールしてください。
-（動作確認バージョン: 2.9.1）
+（動作確認バージョン: 2.10.0）
 
 ## 1-2. 本ライブラリのダウンロード
 
@@ -30,7 +30,7 @@ pip install -r requirements.txt  # 必要ライブラリのインストール
 pip install .
 ```
 
-（動作確認バージョン: Python 3.12.3）
+（動作確認バージョン: Python 3.13.3）
 
 ## 1-3. 実行例
 
