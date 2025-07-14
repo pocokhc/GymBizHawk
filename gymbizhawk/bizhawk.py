@@ -1,11 +1,11 @@
-import enum
 import errno
 import logging
 import os
 import selectors
 import socket
 import subprocess
-from typing import Optional
+import traceback
+from typing import Literal, Optional, cast
 
 import cv2
 import gymnasium as gym
@@ -27,6 +27,10 @@ ObservationTypes = Literal["VALUE", "IMAGE", "BOTH"]
 
 
 class BizHawkError(Exception):
+    pass
+
+
+class ReciveError(BizHawkError):
     pass
 
 
@@ -119,6 +123,7 @@ class BizHawk:
         socket_port: int = 30000,
         socket_buffer_size: int = 1024 * 1024,
         socket_timeout=None,
+        resend_num: int = 5,
     ):
         self.bizhawk_dir = os.path.abspath(bizhawk_dir)
         self.lua_file = os.path.abspath(lua_file)
@@ -126,6 +131,7 @@ class BizHawk:
         self.observation_type = cast(ObservationTypes, observation_type.upper())
         self.frameskip = frameskip
         self.silent = silent
+        self.resend_num = resend_num
 
         self.lua_wkdir = lua_wkdir
         if self.lua_wkdir != "":
@@ -208,9 +214,6 @@ class BizHawk:
             logger.info("1st recv fail.")
             self.close()
             return
-        img = self._recv_image()
-        self.image_shape = img.shape
-        logger.info(f"image shape: {self.image_shape}]")
 
         self.platform = d[0].strip()
         logger.info(f"platform   : {self.platform}")
@@ -222,6 +225,11 @@ class BizHawk:
             obs_type = d2[1].strip()
             logger.info(f"observation: {obs_size}, {obs_type}")
         self.invalid_actions = []
+
+        # 画像情報を取得
+        img = self.fetch_image()
+        self.image_shape = img.shape
+        logger.info(f"image shape: {self.image_shape}]")
 
         # --- action space
         acts = [self._decode_space_type(a) for a in self.action_types]
@@ -290,7 +298,7 @@ class BizHawk:
             return [v.strip() for v in data.split("|")]
         return data
 
-    def _recv_image(self, resize_shape=None) -> np.ndarray:
+    def _recv_screenshot(self, resize_shape=None) -> np.ndarray:
         img_raw = self.server.recv(enable_decode=False)
         if img_raw is None:
             raise BizHawkError("image recv fail")
@@ -308,6 +316,8 @@ class BizHawk:
         return img
 
     def _decode_observation(self, obs_str: str) -> np.ndarray:
+        if obs_str == "":
+            return np.array([])
         # "s1 s2 s3 s4" スペース区切り
         return np.array([float(o) for o in obs_str.split(" ")])
 
@@ -334,22 +344,18 @@ class BizHawk:
         return invalid_actions
 
     def fetch_image(self, resize_shape=None) -> np.ndarray:
-        self.send("image")
-        return self._recv_image(resize_shape)
+        self.send("screenshot")
+        return self._recv_screenshot(resize_shape)
 
     def _recv_extend_observation(self, obs_str):
-        # (recv1): s + observation
-        #    sは元で受信する
-        #    observationはimageの場合は""
-        # recv2: image
-        #    imageとbothの場合のみ送信
         img = None
-        if self.observation_type == ObservationTypes.VALUE or self.observation_type == ObservationTypes.BOTH:
+        if self.observation_type == "VALUE" or self.observation_type == "BOTH":
             obs = self._decode_observation(obs_str)
             logger.debug(f"{self._send_count} obs {obs.shape}: {str(obs):100s}")
 
-        if self.observation_type == ObservationTypes.IMAGE or self.observation_type == ObservationTypes.BOTH:
-            img = self._recv_image(self.image_shape)
+        if self.observation_type == "IMAGE" or self.observation_type == "BOTH":
+            # ssを取得する
+            img = self.fetch_image(self.image_shape)
             logger.debug(f"{self._send_count} img {img.shape}")
 
         if self.observation_type == "VALUE":
@@ -368,11 +374,17 @@ class BizHawk:
         # send: "r"
         # recv:  invalid_actions "|" observation
         self.send("reset")
-        recv_str_list = self.recv(enable_split=True)
-        self.invalid_actions = self._decode_invalid_actions(recv_str_list[0])
-        state, img = self._recv_extend_observation(recv_str_list[1])
-        self.step_img = img
-        return state
+        for i in range(self.resend_num):
+            try:
+                recv_str_list = self.recv(enable_split=True)
+                self.invalid_actions = self._decode_invalid_actions(recv_str_list[0])
+                state, img = self._recv_extend_observation(recv_str_list[1])
+                self.step_img = img
+                return state
+            except ReciveError:
+                logger.info(f"resend: {i + 1}")
+                self.send("resend")
+        raise BizHawkError("recv fail.")
 
     def step(self, action: list):
         # --- 1. send "s act1 act2 act3" スペース区切り
@@ -406,14 +418,20 @@ class BizHawk:
         # reward     : float
         # terminated : "0" or "1"
         # truncated  : "0" or "1"
-        recv_str_list = self.recv(enable_split=True)
-        self.invalid_actions = self._decode_invalid_actions(recv_str_list[0])
-        reward = float(recv_str_list[1])
-        terminated = True if recv_str_list[2] == "1" else False
-        truncated = True if recv_str_list[3] == "1" else False
-        state, img = self._recv_extend_observation(recv_str_list[4])
-        self.step_img = img
-        return state, reward, terminated, truncated
+        for i in range(self.resend_num):
+            try:
+                recv_str_list = self.recv(enable_split=True)
+                self.invalid_actions = self._decode_invalid_actions(recv_str_list[0])
+                reward = float(recv_str_list[1])
+                terminated = True if recv_str_list[2] == "1" else False
+                truncated = True if recv_str_list[3] == "1" else False
+                state, img = self._recv_extend_observation(recv_str_list[4])
+                self.step_img = img
+                return state, reward, terminated, truncated
+            except ReciveError:
+                logger.info(f"resend: {i + 1}")
+                self.send("resend")
+        raise BizHawkError("recv fail.")
 
     # -----------------------------
     # other
@@ -551,20 +569,29 @@ class SocketServer:
                             msg_len = int(data[:idx])
                             data = data[idx + 1 :]
                         except ValueError:
-                            logger.warning(f"Unable to read recv data size number: {data[:1000]}")
+                            s = f"Unable to read recv data size number: {data[:1000]}"
+                            logger.info(traceback.format_exc())
+                            logger.warning(s)
+                            raise ReciveError(s)
                         if msg_len > 0 and len(data) != msg_len:
-                            logger.warning(f"recv data size is different: recv size {len(data)}!={msg_len}, {data[:1000]}")
-                    logger.debug("recv: {}".format(data[:100]))
+                            s = f"recv data size is different: recv size {len(data)}!={msg_len}, {data[:1000]}"
+                            logger.info(traceback.format_exc())
+                            logger.warning(s)
+                            raise ReciveError(s)
+                    logger.debug("recv: {} {}".format(msg_len, data[:100]))
 
-                    # --- closeだけ別処理
-                    if len(data) < 10 and data.decode("utf-8", "ignore").strip() == "close":
-                        return None
+                    # --- close/error別処理
+                    if len(data) < 10:
+                        dat = data.decode("utf-8", "ignore").strip()
+                        if dat in ["close", "error"]:
+                            return None
 
                     if enable_decode:
                         data = data.decode("utf-8", "ignore")
                     return data
+                except ReciveError:
+                    raise
                 except Exception as e:
                     logger.warning(f"recv data fail: {e}")
-                    self.close()
                     return None
             return None

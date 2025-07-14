@@ -59,6 +59,7 @@ GymEnv.new = function(log_path)
     this.backup_data = {}
     this.wkdir_with_slash = ""
     this.frameskip = 0
+    this.prev_send_state = ""
 
     if this.log_path ~= "" then
         local f = io.open(this.log_path, "w")
@@ -207,7 +208,6 @@ GymEnv.new = function(log_path)
             s = s .. "," .. self.OBSERVATION
         end
         self:send(s)
-        self:sendImage()
 
         ---- main loop
         while true do
@@ -340,24 +340,17 @@ GymEnv.new = function(log_path)
         comm.socketServerSend(d)
     end
 
-    this.sendImage = function(self)
-        self:log_debug("send image")
+    this.sendScreenShot = function(self)
+        self:log_debug("send ScreenShot")
         comm.socketServerScreenShot()
     end
 
     this._sendExtendObservtion = function(self, s)
-        -- send1: s + "observation"
-        --    observationはimageの場合は""
-        -- send2: image
-        --    imageとbothの場合のみ送信
         if self.observation_type == "VALUE" or self.observation_type == "BOTH" then
             s = s .. self:_encodeObservation()
         end
+        self.prev_send_state = s
         self:send(s)
-
-        if self.observation_type == "IMAGE" or self.observation_type == "BOTH" then
-            self:sendImage()
-        end
     end
 
     -----------------------------------
@@ -464,9 +457,9 @@ GymEnv.new = function(log_path)
             client.pause()
             emu.frameadvance()
             return true
-        elseif data == "image" then
+        elseif data == "screenshot" then
             self:log_debug("[image] send screenshot")
-            self:sendImage()
+            self:sendScreenShot()
             return true
         elseif startswith(data, "mode") then
             local mode = string.match(data, "mode (.+)")
@@ -488,6 +481,10 @@ GymEnv.new = function(log_path)
             if self.processor.restore ~= nil then
                 self.processor:restore(self.backup_data[name])
             end
+            return true
+        elseif data == "resend" then
+            self:log_debug("[resend]")
+            self:send(self.prev_send_state)
             return true
         end
 
@@ -591,9 +588,15 @@ GymEnv.new = function(log_path)
         local s = ""
         s = s .. os.date("%Y/%m/%d %H:%M:%S")
         s = s .. ": " .. str
+
+        -- write
         local f = io.open(self.log_path, "a")
-        f:write(s .. "\n")
-        f:close()
+        if f then
+            f:write(s .. "\n")
+            f:close()
+        else
+            print("[Error] Failed to open log file: " .. self.log_path)
+        end
     end
     this.log_info = function(self, str)
         self:log(str, true)
