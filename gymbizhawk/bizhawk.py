@@ -33,8 +33,9 @@ class BizHawkError(Exception):
 class BizHawkEnv(gym.Env):
     metadata = {"render_modes": ["rgb_array"], "render_fps": 60}
 
-    def __init__(self, render_mode: str | None = None, **kwargs):
+    def __init__(self, render_mode: str | None = None, display_name: str = "", **kwargs):
         self.render_mode = render_mode
+        self.display_name = display_name
         self.bizhawk = BizHawk(**kwargs)
 
         self.bizhawk.boot()
@@ -81,6 +82,11 @@ class BizHawkEnv(gym.Env):
     # ------------------------------------------
     # SRL
     # ------------------------------------------
+    def get_display_name(self) -> str:
+        if self.display_name == "":
+            return ""
+        return self.display_name
+
     def setup(self, training: bool, **kwargs):
         if self.bizhawk.mode not in ["DEBUG", "RECORD"]:
             self.bizhawk.set_mode("FAST_RUN")
