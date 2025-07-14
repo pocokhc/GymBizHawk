@@ -71,6 +71,14 @@ GymEnv.new = function(log_path)
     end
 
     this.run = function(self, processor)
+        local success, result = pcall(self.run_sub, self, processor)
+        if not success then
+            self:log_info("[Error]" .. result)
+            comm.socketServerSend("error")
+        end
+    end
+
+    this.run_sub = function(self, processor)
         -- bizhawk外から実行した場合は何もしない
         if emu == nil then
             self:log_info("Run it from BizHawk.")
