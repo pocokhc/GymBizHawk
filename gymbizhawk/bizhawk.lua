@@ -58,6 +58,7 @@ GymEnv.new = function(log_path)
     this.observation_type = ""
     this.backup_data = {}
     this.wkdir_with_slash = ""
+    this.frameskip = 0
 
     if this.log_path ~= "" then
         local f = io.open(this.log_path, "w")
@@ -125,15 +126,17 @@ GymEnv.new = function(log_path)
         local setup_str
         local mode
         local silent
-        mode, self.observation_type, silent, self.wkdir_with_slash, setup_str = string.match(recv, "a|(.-)|(.-)|(.-)|(.-)|(.+)")
+        mode, self.observation_type, self.frameskip, silent,self.wkdir_with_slash, setup_str = string.match(recv, "a|(.-)|(.-)|(.-)|(.-)|(.-)|(.+)")
         if self.wkdir_with_slash == "_" then
             self.wkdir_with_slash = ""
         end
         if setup_str == "_" then
             setup_str = ""
         end
+        self.frameskip = tonumber(self.frameskip)
         self:log_info("mode            :" .. mode)
         self:log_info("observation_type:" .. self.observation_type)
+        self:log_info("frameskip       :" .. self.frameskip)
         self:log_info("silent          :" .. silent)
         self:log_info("wkdir           :" .. self.wkdir_with_slash)
         self:log_info("setup_str       :" .. setup_str)
@@ -412,13 +415,26 @@ GymEnv.new = function(log_path)
 
             ---- 2. step
             local prev_frame = emu.framecount()
-            local reward, terminated, truncated = self.processor:step(acts)
+            self:setStepSpeed()
+            local reward = 0
+            local r, terminated, truncated, done
+            for i=1, self.frameskip+1 do
+                r, terminated, truncated = self.processor:step(acts)
+                reward = reward + r
+                done = terminated or truncated
+                if done then
+                    break
+                end
+            end
             self.is_reset = false
             self:log_debug("[step] reward: " .. tostring(reward) .. ", terminated: " .. tostring(terminated) .. ", truncated: " .. tostring(truncated))
-            if prev_frame == emu.framecount() then
-                -- step内でframeが進んでいない場合進める
-                emu.frameadvance()
-                self:log_debug("frameadvance")
+            -- step内でframeが進んでいない場合進める
+            if not done then
+                local target_frame = prev_frame+self.frameskip
+                while emu.framecount() < target_frame do
+                    emu.frameadvance()
+                    self:log_debug("[step] frameadvance " .. target_frame .. ">" .. emu.framecount())
+                end
             end
 
             ---- 3. send: invalid_actions "|" reward "|" terminated "|" truncated "|" observation

@@ -105,6 +105,7 @@ class BizHawk:
         lua_file: str,
         mode: ModeTypes = "RUN",
         observation_type: ObservationTypes = "VALUE",
+        frameskip: int = 0,
         silent: bool = True,
         lua_wkdir: str = "lua_wkdir",
         setup_str_for_lua: str = "",
@@ -117,6 +118,7 @@ class BizHawk:
         self.lua_file = os.path.abspath(lua_file)
         self.mode = cast(ModeTypes, mode.upper())
         self.observation_type = cast(ObservationTypes, observation_type.upper())
+        self.frameskip = frameskip
         self.silent = silent
 
         self.lua_wkdir = lua_wkdir
@@ -183,9 +185,10 @@ class BizHawk:
         os.environ["GYMBIZHAWK"] = "0"
 
         # --- 1st send
-        s = "a|{}|{}|{}|{}|{}".format(
-            self.mode.name,
-            self.observation_type.name,
+        s = "a|{}|{}|{}|{}|{}|{}".format(
+            self.mode,
+            self.observation_type,
+            self.frameskip,
             "1" if self.silent else "0",
             "_" if self.lua_wkdir == "" else self.lua_wkdir,
             "_" if self.setup_str_for_lua == "" else self.setup_str_for_lua,
