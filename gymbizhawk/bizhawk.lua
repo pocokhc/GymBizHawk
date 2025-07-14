@@ -53,7 +53,7 @@ GymEnv.new = function(log_path)
     this.log_path = log_path or "gymenv.log"
     this.processor = nil
     this.mode = ""
-    this.speed = 100
+    this.emu_speed = 100
     this.is_reset = false
     this.observation_type = ""
     this.backup_data = {}
@@ -109,6 +109,8 @@ GymEnv.new = function(log_path)
         self.platform = emu.getsystemid()
         client.pause()
         client.SetSoundOn(false)
+        client.speedmode(100)
+        self.emu_speed = 100
 
         ---- 1st recv
         local recv = self:recv_wait()
@@ -171,20 +173,19 @@ GymEnv.new = function(log_path)
 
         ---- emu setting
         self:log_debug("[reset]")
-        if mode == "DEBUG" then
-            self:log_info("[DEBUG] Paused. Run with frameadvance.")
+        self:setMode(mode)
+        if self.mode == "FAST_RUN" then
+            client.unpause()
         elseif mode == "RECORD" then
-            self:log_info("[RECORD] Paused. Run with frameadvance.")
-        else
-            self:log_debug("pause, speed 800, unpause")
-            self.mode = "TRAIN"
-            client.speedmode(800)
-            self.speed = 800
+            self:log_info("[RECORD] Reset wait. Run with frameadvance.")
+        elseif mode == "DEBUG" then
+            self:log_info("[DEBUG] Paused. Run with frameadvance.")
+        else  -- RUN
             client.unpause()
         end
-        self.processor:reset()        self.is_reset = true
-        self.mode = ""
-        self:setMode(mode)
+        self:setResetSpeed()
+        self.processor:reset()
+        self.is_reset = true
 
         ---- 1st send
         local s = ""
@@ -227,13 +228,13 @@ GymEnv.new = function(log_path)
                 break
             end
         end
-
+        
+        --- close
         self:close()
         print("speed 100, paused.")
         self:log_debug("speed 100, paused")
-        self.speed = 100
+        self.emu_speed = 100
         client.speedmode(100)
-        client.SetSoundOn(true)
         client.pause()
     end
 
@@ -246,26 +247,70 @@ GymEnv.new = function(log_path)
             return
         end
         self.mode = mode
-        client.pause()
-        if self.mode == "TRAIN" then
-            self:log_info("mode TRAIN: speed 800, unpaused.")
-            client.speedmode(800)
-            self.speed = 800
-            client.unpause()
+        if self.mode == "FAST_RUN" then
+            self:log_info("set mode FAST_RUN: speed 800, unpaused.")
         elseif self.mode == "DEBUG" then
-            client.speedmode(100)
-            self.speed = 100
-            self:log_info("[DEBUG] Paused. Run with frameadvance.")
+            self:log_info("set mode DEBUG: Paused. Run with frameadvance.")
         elseif self.mode == "RECORD" then
-            self:log_info("mode RECORD: speed 100, unpaused.")
-            client.speedmode(100)
-            self.speed = 100
-            client.unpause()
-        else
-            self:log_info("mode RUN: speed 100, unpaused.")
-            client.speedmode(100)
-            self.speed = 100
-            client.unpause()
+            self:log_info("set mode RECORD: speed 800, unpaused.")
+        else -- RUN
+            self:log_info("set mode RUN: speed 100, unpaused.")
+        end
+    end
+
+    this.setResetSpeed = function(self)
+        if self.mode == "FAST_RUN" then
+            if self.emu_speed == 100 then
+                self:log_debug("speed 800")
+                self.emu_speed = 800
+                client.speedmode(800)
+            end
+        elseif self.mode == "RUN" then
+            if self.emu_speed == 800 then
+                self:log_debug("speed 100")
+                self.emu_speed = 100
+                client.speedmode(100)
+            end
+        elseif self.mode == "RECORD" then
+            if self.emu_speed == 100 then
+                self:log_debug("speed 800")
+                self.emu_speed = 800
+                client.speedmode(800)
+            end
+        elseif self.mode == "DEBUG" then
+            if self.emu_speed == 800 then
+                self:log_debug("speed 100")
+                self.emu_speed = 100
+                client.speedmode(100)
+            end
+        end
+    end
+
+    this.setStepSpeed = function(self)
+        if self.mode == "FAST_RUN" then
+            if self.emu_speed == 100 then
+                self:log_debug("speed 800")
+                self.emu_speed = 800
+                client.speedmode(800)
+            end
+        elseif self.mode == "RUN" then
+            if self.emu_speed == 800 then
+                self:log_debug("speed 100")
+                self.emu_speed = 100
+                client.speedmode(100)
+            end
+        elseif self.mode == "RECORD" then
+            if self.emu_speed == 100 then
+                self:log_debug("speed 800")
+                self.emu_speed = 800
+                client.speedmode(800)
+            end
+        elseif self.mode == "DEBUG" then
+            if self.emu_speed == 800 then
+                self:log_debug("speed 100")
+                self.emu_speed = 100
+                client.speedmode(100)
+            end
         end
     end
 
@@ -334,17 +379,9 @@ GymEnv.new = function(log_path)
                 self:log_debug("[reset] skip")
             else
                 self:log_debug("[reset]")
-                -- debug以外は高速にする
-                if self.mode ~= "DEBUG" and self.speed == 100 then
-                    self:log_info("speed 800")
-                    client.speedmode(800)
-                end
+                self:setResetSpeed()
                 self.processor:reset()
                 self.is_reset = true
-                if self.mode ~= "DEBUG" and self.speed == 100 then
-                    self:log_info("speed 100")
-                    client.speedmode(100)
-                end
             end
 
             local s = self:_encodeInvalidActions() .. "|"
@@ -546,7 +583,7 @@ GymEnv.new = function(log_path)
         self:log(str, true)
     end
     this.log_debug = function(self, str)
-        if self.mode == "TRAIN" then
+        if self.mode == "FAST_RUN" then
             return
         end
         if self.mode == "DEBUG" then

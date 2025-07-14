@@ -22,49 +22,8 @@ gymnasium.envs.registration.register(
 )
 
 
-class ModeTypes(enum.Enum):
-    DEBUG = enum.auto()
-    TRAIN = enum.auto()
-    RUN = enum.auto()
-    RECORD = enum.auto()
-
-    @staticmethod
-    def get_names() -> list[str]:
-        return [i.name for i in ModeTypes]
-
-    @staticmethod
-    def from_str(mode: "str | ModeTypes") -> "ModeTypes":
-        if isinstance(mode, str):
-            mode = mode.upper()
-            names = ModeTypes.get_names()
-            assert mode in names, "Unknown type '{}'. type list is [{}].".format(
-                mode,
-                ",".join(names),
-            )
-            mode = ModeTypes[mode]
-        return mode
-
-
-class ObservationTypes(enum.Enum):
-    VALUE = enum.auto()
-    IMAGE = enum.auto()
-    BOTH = enum.auto()
-
-    @staticmethod
-    def get_names() -> list[str]:
-        return [i.name for i in ObservationTypes]
-
-    @staticmethod
-    def from_str(mode: "str | ObservationTypes") -> "ObservationTypes":
-        if isinstance(mode, str):
-            mode = mode.upper()
-            names = ObservationTypes.get_names()
-            assert mode in names, "Unknown type '{}'. type list is [{}].".format(
-                mode,
-                ",".join(names),
-            )
-            mode = ObservationTypes[mode]
-        return mode
+ModeTypes = Literal["RUN", "FAST_RUN", "RECORD", "DEBUG"]
+ObservationTypes = Literal["VALUE", "IMAGE", "BOTH"]
 
 
 class BizHawkError(Exception):
@@ -123,11 +82,8 @@ class BizHawkEnv(gym.Env):
     # SRL
     # ------------------------------------------
     def setup(self, training: bool, **kwargs):
-        if self.bizhawk.mode not in [ModeTypes.DEBUG, ModeTypes.RECORD]:
-            if training:
-                self.bizhawk.set_mode(ModeTypes.TRAIN)
-            else:
-                self.bizhawk.set_mode(ModeTypes.RUN)
+        if self.bizhawk.mode not in ["DEBUG", "RECORD"]:
+            self.bizhawk.set_mode("FAST_RUN")
 
     def get_invalid_actions(self):
         return self.bizhawk.get_invalid_actions()
@@ -147,8 +103,8 @@ class BizHawk:
         self,
         bizhawk_dir: str,
         lua_file: str,
-        mode: ModeTypes | str = ModeTypes.RUN,
-        observation_type: ObservationTypes | str = ObservationTypes.VALUE,
+        mode: ModeTypes = "RUN",
+        observation_type: ObservationTypes = "VALUE",
         silent: bool = True,
         lua_wkdir: str = "lua_wkdir",
         setup_str_for_lua: str = "",
@@ -159,8 +115,8 @@ class BizHawk:
     ):
         self.bizhawk_dir = os.path.abspath(bizhawk_dir)
         self.lua_file = os.path.abspath(lua_file)
-        self.mode = ModeTypes.from_str(mode)
-        self.observation_type = ObservationTypes.from_str(observation_type)
+        self.mode = cast(ModeTypes, mode.upper())
+        self.observation_type = cast(ObservationTypes, observation_type.upper())
         self.silent = silent
 
         self.lua_wkdir = lua_wkdir
@@ -194,9 +150,10 @@ class BizHawk:
         self.close()
 
     def close(self):
-        if self.mode in [ModeTypes.DEBUG, ModeTypes.RECORD]:
+        if self.mode in ["DEBUG", "RECORD"]:
             self.send("frameadvance_loop")
-            input("closing. continue> ")
+            print("GymBizHawk closing. (When the program is terminated, the emu closes, so I stop it for debugging purposes.)")
+            input("continue> ")
         self.send("close")
         self.server.close()
         if self.emu is not None:
@@ -250,7 +207,7 @@ class BizHawk:
         logger.info(f"platform   : {self.platform}")
         self.action_types = [str(x.strip()) for x in d[1].split(",") if x.strip() != ""]
         logger.info(f"action     : {self.action_types}")
-        if self.observation_type in [ObservationTypes.VALUE, ObservationTypes.BOTH]:
+        if self.observation_type in ["VALUE", "BOTH"]:
             d2 = d[2].split(",")
             obs_size = int(d2[0].strip())
             obs_type = d2[1].strip()
@@ -262,11 +219,11 @@ class BizHawk:
         self.action_space = gym.spaces.Tuple(acts)
 
         # --- obs space
-        if self.observation_type == ObservationTypes.VALUE:
+        if self.observation_type == "VALUE":
             self.observation_space = self._decode_space_type(obs_type, shape=(obs_size,))
-        elif self.observation_type == ObservationTypes.IMAGE:
+        elif self.observation_type == "IMAGE":
             self.observation_space = gym.spaces.Box(0, 255, shape=self.image_shape, dtype=np.uint8)
-        elif self.observation_type == ObservationTypes.BOTH:
+        elif self.observation_type == "BOTH":
             self.observation_space = gym.spaces.Tuple(
                 [
                     gym.spaces.Box(0, 255, shape=self.image_shape, dtype=np.uint8),
@@ -386,11 +343,11 @@ class BizHawk:
             img = self._recv_image(self.image_shape)
             logger.debug(f"{self._send_count} img {img.shape}")
 
-        if self.observation_type == ObservationTypes.VALUE:
+        if self.observation_type == "VALUE":
             state = obs
-        elif self.observation_type == ObservationTypes.IMAGE:
+        elif self.observation_type == "IMAGE":
             state = img
-        elif self.observation_type == ObservationTypes.BOTH:
+        elif self.observation_type == "BOTH":
             state = [img, obs]
         return state, img
 
@@ -456,8 +413,8 @@ class BizHawk:
         return self.invalid_actions
 
     def set_mode(self, mode: ModeTypes | str):
-        self.mode = ModeTypes.from_str(mode)
-        self.send(f"mode {self.mode.name}")
+        self.mode = cast(ModeTypes, mode.upper())
+        self.send(f"mode {self.mode}")
 
 
 class SocketServer:
