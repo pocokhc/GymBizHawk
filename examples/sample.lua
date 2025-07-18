@@ -1,4 +1,5 @@
-package.path = package.path .. ';bizhawk.lua'
+-- **Set the path to 'bizhawk.lua'**
+package.path = package.path .. ';../gymbizhawk/bizhawk.lua'
 local bizhawk = require('bizhawk')
 
 
@@ -8,8 +9,8 @@ EnvProcessor.new = function()
     this.NAME = "ROM"
     this.ROM = bizhawk.getenv_safe("ROM_PATH")
     this.HASH = ""
-    this.ACTION = {}
-    this.OBSERVATION = "int"
+    this.ACTION_SPACE = {}
+    this.OBSERVATION_SPACE = {"int"}
 
     -- implement function
     this.setup = function(self, env, setup_str)
@@ -30,9 +31,9 @@ EnvProcessor.new = function()
         end
 
         print("--- button list")
-        self.ACTION = {}
+        self.ACTION_SPACE = {}
         for key in pairs(self.buttons) do
-            self.ACTION[#self.ACTION+1] = "bool"
+            self.ACTION_SPACE[#self.ACTION_SPACE+1] = "bool"
             print(key)
         end
 
@@ -77,7 +78,7 @@ EnvProcessor.new = function()
     end
 
     -- option
-    --   return list[self.ACTION list]
+    --   return list[self.ACTION_SPACE list]
     this.getInvalidActions = function(self)
         local d = {}
         return d
