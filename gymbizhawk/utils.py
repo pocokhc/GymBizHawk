@@ -1,5 +1,8 @@
 import logging
+import os
 from typing import Union, cast
+
+logger = logging.getLogger(__name__)
 
 
 def print_logger(level: Union[int, str] = logging.INFO, log_name: str = "") -> None:
@@ -15,3 +18,10 @@ def print_logger(level: Union[int, str] = logging.INFO, log_name: str = "") -> N
     h.setLevel(level)
     h.setFormatter(formatter)
     logger.addHandler(h)
+
+
+def remove_lua_log(lua_dir: str, log_file: str = "gymenv.log"):
+    path = os.path.join(lua_dir, log_file)
+    if os.path.isfile(path):
+        logger.info(f"remove log file: {os.path.abspath(path)}")
+        os.remove(path)

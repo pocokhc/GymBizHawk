@@ -61,12 +61,12 @@ GymEnv.new = function(log_path)
     this.frameskip = 0
     this.prev_send_state = ""
 
-    if this.log_path ~= "" then
-        local f = io.open(this.log_path, "w")
-        if f ~= nil then
-            f:close()
-        end
-    end
+    -- if this.log_path ~= "" then
+    --     local f = io.open(this.log_path, "w")
+    --     if f ~= nil then
+    --         f:close()
+    --     end
+    -- end
 
     this.close = function(self)
         self:send("close")
