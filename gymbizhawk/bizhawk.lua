@@ -279,10 +279,10 @@ GymEnv.new = function(log_path)
                 client.speedmode(800)
             end
         elseif self.mode == "RUN" then
-            if self.emu_speed == 800 then
-                self:log_debug("speed 100")
-                self.emu_speed = 100
-                client.speedmode(100)
+            if self.emu_speed == 100 then
+                self:log_debug("speed 800")
+                self.emu_speed = 800
+                client.speedmode(800)
             end
         elseif self.mode == "RECORD" then
             if self.emu_speed == 100 then
