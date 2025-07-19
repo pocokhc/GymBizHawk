@@ -33,8 +33,8 @@ UserProcessor(Lua)
       this.NAME = "任意の名前"
       this.ROM = "ROM path"
       this.HASH = ""  -- ROMのHASH値(省略可能)
-      this.ACTION = { "bool" }  -- action types
-      this.OBSERVATION = "int"  -- observation type
+      this.ACTION_SPACE = {"bool"}  -- action types
+      this.OBSERVATION_SPACE = {"int"}  -- observation type
       
       -- abstract function
       -- 最初に呼ばれます
@@ -72,7 +72,7 @@ UserProcessor(Lua)
 ActionTypes / ObservationType
 ------------------------------------
 
-`this.ACTION` と `this.OBSERVATION` は以下のtypeを指定します。  
+`this.ACTION_SPACE` と `this.OBSERVATION_SPACE` は以下のtypeを指定します。  
 
 .. list-table::
   
@@ -94,12 +94,18 @@ ActionTypes / ObservationType
    * - float [low] [high]
      - float 0.0 1.0
      - Box(low, high, shape=(1,), dtype=np.float32)
+   * - 各項目に[N]
+     - int[5] 0 100
+     - "int 0 100"×5個分
+   * - 最後の項目に*(OBSERVATION_SPACEのみ)
+     - int* 0 100
+     - 以降全ての値を"int 0 100"とする
 
-ACTIONは配列形式で指定します。
+ACTION_SPACE/OBSERVATION_SPACEはこれを配列形式で指定します。
 
 .. code-block:: Lua
 
-   this.ACTION = {
+   this.ACTION_SPACE = {
       "int 1 8",
       "int 1 16",
       "bool",
@@ -107,13 +113,6 @@ ACTIONは配列形式で指定します。
    }
 
 gym側へはこの配列を `gym.spaces.Tuple` 形式で渡します。
-
-OBSERVATIONは1つだけ指定でき、全ての値でこのtypeが適用されます。
-
-.. code-block:: Lua
-
-    this.OBSERVATION = "int"
-
 
 
 UserEnv(Python)

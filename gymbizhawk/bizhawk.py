@@ -1,11 +1,12 @@
 import errno
 import logging
 import os
+import re
 import selectors
 import socket
 import subprocess
 import traceback
-from typing import Literal, Optional, cast
+from typing import List, Literal, Optional, cast
 
 import cv2
 import gymnasium as gym
@@ -32,6 +33,136 @@ class BizHawkError(Exception):
 
 class ReciveError(BizHawkError):
     pass
+
+
+class BizHawkSpaces:
+    def __init__(self, types_str: str, size: int):
+        self.emu_types = [str(x.strip()) for x in types_str.split(",") if x.strip() != ""]
+        self._decode_space(size)
+
+    def _decode_space(self, size: int):
+        self.gym_spaces: List[gym.spaces.Space] = []
+        self.spaces_info: list = []
+        space_size = 0
+        for t_str in self.emu_types:
+            # [N]
+            m = re.search(r"\[(\d+)\]", t_str.split(" ")[0])
+            if m is None:
+                num = 1
+            else:
+                num = int(m.group(1))
+
+            # *
+            if size > 0:
+                if "*" in t_str:
+                    num = size - space_size
+
+            # space
+            if t_str.startswith("bool"):
+                for _ in range(num):
+                    self.gym_spaces.append(gym.spaces.Discrete(2))
+                    self.spaces_info.append({"n": 1, "type": "bool", "space": "Discrete"})
+            elif t_str.startswith("int"):
+                args = [t.strip() for t in t_str.split(" ") if t.strip() != ""]
+                if len(args) == 1:
+                    self.gym_spaces.append(gym.spaces.Box(-np.inf, np.inf, (num,), dtype=np.int64))
+                    self.spaces_info.append({"n": num, "type": "int", "space": "Box_int"})
+                else:
+                    low = int(args[1], base=0)
+                    high = int(args[2], base=0)
+                    space = gym.spaces.Discrete(high - low + 1, start=low)
+                    for _ in range(num):
+                        self.gym_spaces.append(space)
+                        self.spaces_info.append({"n": 1, "type": "int", "space": "Discrete"})
+            elif t_str.startswith("float"):
+                args = [t.strip() for t in t_str.split(" ") if t.strip() != ""]
+                if len(args) == 1:
+                    low = -np.inf
+                    high = np.inf
+                else:
+                    low = float(args[1])
+                    high = float(args[2])
+                self.gym_spaces.append(gym.spaces.Box(low, high, (num,), dtype=np.float32))
+                self.spaces_info.append({"n": num, "type": "float", "space": "Box"})
+            else:
+                raise BizHawkError(t_str)
+            space_size += num
+
+    def get_gym_space(self) -> gym.spaces.Space:
+        return self.gym_spaces[0] if len(self.gym_spaces) == 1 else gym.spaces.Tuple(self.gym_spaces)
+
+    def decode_obs(self, state_str: str):
+        states = []
+        idx = 0
+        vals_all = state_str.split(" ")
+        for info in self.spaces_info:
+            vals = vals_all[idx : idx + info["n"]]
+            if info["space"] == "Discrete":
+                assert len(vals) == 1, str(info)
+                states.append(int(vals[0]))
+            elif info["space"] == "Box_int":
+                states.append(np.array(vals, dtype=np.int64))
+            elif info["space"] == "Box":
+                states.append(np.array(vals, dtype=np.float32))
+            else:
+                raise ValueError(info)
+            idx += info["n"]
+        if len(states) == 1:
+            return states[0]
+        else:
+            return states
+
+    def encode_action(self, acts: list) -> str:
+        if len(self.spaces_info) == 1:
+            acts = [acts]
+        if isinstance(acts, np.ndarray):
+            acts = acts.tolist()
+        if isinstance(acts, tuple):
+            acts = list(acts)
+
+        emu_act = []
+        for info, act in zip(self.spaces_info, acts):
+            if isinstance(act, np.ndarray):
+                act = act.tolist()
+            if isinstance(act, tuple):
+                act = list(act)
+
+            if info["space"] == "Discrete":
+                if isinstance(act, list):
+                    act = act[0]
+                emu_act.append(str(int(act)))
+            elif info["space"] == "Box_int":
+                for a in act:
+                    emu_act.append(str(int(a)))
+            elif info["space"] == "Box":
+                for a in act:
+                    emu_act.append(str(a))
+            else:
+                raise ValueError(info)
+
+        return " ".join(emu_act)
+
+    def decode_invalid_actions(self, inv_act_str: str):
+        #  アクションセット毎の配列（なので2次元配列）
+        # 区切りは"_"と","、最後に_が入る
+        # float: 未定義
+        invalid_actions = []
+        for inv_act_str in inv_act_str.split("_"):
+            inv_act_str = inv_act_str.strip()
+            if inv_act_str == "":
+                continue
+            inv_act_str_split = inv_act_str.split(",")
+            inv_act = []
+            for i, info in enumerate(self.spaces_info):
+                val_str = inv_act_str_split[i].strip()
+                if info["space"] == "Discrete":
+                    inv_act.append(int(val_str, base=0))
+                elif info["space"] == "Box_int":
+                    inv_act.append(int(val_str, base=0))
+                else:
+                    pass
+            invalid_actions.append(inv_act)
+        return invalid_actions
 
 
 class BizHawkEnv(gym.Env):
@@ -214,16 +345,18 @@ class BizHawk:
             logger.info("1st recv fail.")
             self.close()
             return
-
+        # [0] platform
         self.platform = d[0].strip()
         logger.info(f"platform   : {self.platform}")
-        self.action_types = [str(x.strip()) for x in d[1].split(",") if x.strip() != ""]
-        logger.info(f"action     : {self.action_types}")
+        # [1] action_space
+        self.action_emu_spaces = BizHawkSpaces(d[1], size=-1)
+        logger.info(f"action     : {self.action_emu_spaces.emu_types}")
+        self.action_space: gym.spaces.Space = self.action_emu_spaces.get_gym_space()
         if self.observation_type in ["VALUE", "BOTH"]:
-            d2 = d[2].split(",")
-            obs_size = int(d2[0].strip())
-            obs_type = d2[1].strip()
-            logger.info(f"observation: {obs_size}, {obs_type}")
+            # [2][3] obs_size, obs_space
+            obs_size = int(d[2].strip())
+            self.obs_emu_spaces = BizHawkSpaces(d[3], size=obs_size)
+            logger.info(f"observation: {obs_size}, {self.obs_emu_spaces.emu_types}")
         self.invalid_actions = []
 
         # 画像情報を取得
@@ -231,53 +364,17 @@ class BizHawk:
         self.image_shape = img.shape
         logger.info(f"image shape: {self.image_shape}]")
 
-        # --- action space
-        acts = [self._decode_space_type(a) for a in self.action_types]
-        self.action_space = gym.spaces.Tuple(acts)
-
         # --- obs space
         if self.observation_type == "VALUE":
-            self.observation_space = self._decode_space_type(obs_type, shape=(obs_size,))
+            self.observation_space: gym.spaces.Space = self.obs_emu_spaces.get_gym_space()
         elif self.observation_type == "IMAGE":
-            self.observation_space = gym.spaces.Box(0, 255, shape=self.image_shape, dtype=np.uint8)
+            self.observation_space: gym.spaces.Space = gym.spaces.Box(0, 255, shape=self.image_shape, dtype=np.uint8)
         elif self.observation_type == "BOTH":
-            self.observation_space = gym.spaces.Tuple(
-                [
-                    gym.spaces.Box(0, 255, shape=self.image_shape, dtype=np.uint8),
-                    self._decode_space_type(obs_type, shape=(obs_size,)),
-                ]
-            )
+            obs_spaces = self.obs_emu_spaces.gym_spaces[:]
+            obs_spaces.insert(0, gym.spaces.Box(0, 255, shape=self.image_shape, dtype=np.uint8))
+            self.observation_space: gym.spaces.Space = gym.spaces.Tuple(obs_spaces)
         logger.info(f"action space     : {self.action_space}")
         logger.info(f"observation space: {self.observation_space}]")
-
-    def _decode_space_type(self, type_str: str, shape=(1,)) -> gym.spaces.Space:
-        if type_str == "bool":  # "bool"
-            return gym.spaces.Discrete(2)
-        elif type_str.startswith("int"):  # "int 0 255"
-            s = type_str.split(" ")
-            if len(s) == 1:
-                low = -np.inf
-                high = np.inf
-                return gym.spaces.Box(low, high, shape, dtype=np.int64)
-            elif shape == (1,):
-                low = int(s[1], 0)
-                high = int(s[2], 0)
-                return gym.spaces.Discrete(high - low + 1, start=low)
-            else:
-                low = int(s[1], 0)
-                high = int(s[2], 0)
-                return gym.spaces.Box(low, high, shape, dtype=np.int64)
-        elif type_str.startswith("float"):  # "float 0.0 1.0"
-            s = type_str.split(" ")
-            if len(s) == 1:
-                low = -np.inf
-                high = np.inf
-            else:
-                low = int(s[1], 0)
-                high = int(s[2], 0)
-            return gym.spaces.Box(low, high, shape, dtype=np.float32)
-        else:
-            raise BizHawkError(type_str)
 
     # -----------------------
     # Communication
@@ -315,34 +412,6 @@ class BizHawk:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         return img
 
-    def _decode_observation(self, obs_str: str) -> np.ndarray:
-        if obs_str == "":
-            return np.array([])
-        # "s1 s2 s3 s4" スペース区切り
-        return np.array([float(o) for o in obs_str.split(" ")])
-
-    def _decode_invalid_actions(self, inv_act_str: str):
-        #  アクションセット毎の配列（なので2次元配列）
-        # 区切りは"_"と","、最後に_が入る
-        # float: 未定義
-        invalid_actions = []
-        for inv_act_str in inv_act_str.split("_"):
-            inv_act_str = inv_act_str.strip()
-            if inv_act_str == "":
-                continue
-            inv_act_str_split = inv_act_str.split(",")
-            inv_act = []
-            for i, t in enumerate(self.action_types):
-                val_str = inv_act_str_split[i].strip()
-                if t == "bool":
-                    inv_act.append(True if val_str == "1" else False)
-                elif t.startswith("int"):
-                    inv_act.append(int(val_str, 0))
-                else:
-                    inv_act.append(0)
-            invalid_actions.append(inv_act)
-        return invalid_actions
-
     def fetch_image(self, resize_shape=None) -> np.ndarray:
         self.send("screenshot")
         return self._recv_screenshot(resize_shape)
@@ -350,8 +419,8 @@ class BizHawk:
     def _recv_extend_observation(self, obs_str):
         img = None
         if self.observation_type == "VALUE" or self.observation_type == "BOTH":
-            obs = self._decode_observation(obs_str)
-            logger.debug(f"{self._send_count} obs {obs.shape}: {str(obs):100s}")
+            obs = self.obs_emu_spaces.decode_obs(obs_str)
+            logger.debug(f"{self._send_count} obs: {str(obs):100s}")
 
         if self.observation_type == "IMAGE" or self.observation_type == "BOTH":
             # ssを取得する
@@ -377,7 +446,7 @@ class BizHawk:
         for i in range(self.resend_num):
             try:
                 recv_str_list = self.recv(enable_split=True)
-                self.invalid_actions = self._decode_invalid_actions(recv_str_list[0])
+                self.invalid_actions = self.action_emu_spaces.decode_invalid_actions(recv_str_list[0])
                 state, img = self._recv_extend_observation(recv_str_list[1])
                 self.step_img = img
                 return state
@@ -387,30 +456,7 @@ class BizHawk:
         raise BizHawkError("recv fail.")
 
     def step(self, action: list):
-        # --- 1. send "s act1 act2 act3" スペース区切り
-        if isinstance(action, np.ndarray):
-            action = action.tolist()
-        if isinstance(action, tuple):
-            action = list(action)
-        _a = []
-        for i, t in enumerate(self.action_types):
-            a = action[i]
-            if isinstance(a, np.ndarray):
-                a = a.tolist()
-            if isinstance(a, tuple):
-                a = list(a)
-            if isinstance(a, list):
-                a = a[0]
-            if t == "bool":
-                _a.append("1" if a else "0")
-            elif t.startswith("int"):
-                _a.append(str(a))
-            elif t.startswith("float"):
-                _a.append(str(a))
-            else:
-                _a.append(str(a))
-
-        act_str = " ".join(_a)
+        act_str = self.action_emu_spaces.encode_action(action)
         self.send(f"step {act_str}")
 
         # --- 3. recv
@@ -421,7 +467,7 @@ class BizHawk:
         for i in range(self.resend_num):
             try:
                 recv_str_list = self.recv(enable_split=True)
-                self.invalid_actions = self._decode_invalid_actions(recv_str_list[0])
+                self.invalid_actions = self.action_emu_spaces.decode_invalid_actions(recv_str_list[0])
                 reward = float(recv_str_list[1])
                 terminated = True if recv_str_list[2] == "1" else False
                 truncated = True if recv_str_list[3] == "1" else False

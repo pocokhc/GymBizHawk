@@ -147,15 +147,15 @@ GymEnv.new = function(log_path)
 
         ------ setup processor
         self.processor:setup(self, setup_str)
-        self.ACTION = self.processor.ACTION
-        if self.ACTION == nil then
-            self:log_info("ACTION is not defined.")
+        self.ACTION_SPACE = self.processor.ACTION_SPACE
+        if self.ACTION_SPACE == nil then
+            self:log_info("ACTION_SPACE is not defined.")
             self:close()
             return
         end
-        self.OBSERVATION = self.processor.OBSERVATION
-        if self.OBSERVATION == nil then
-            self:log_info("OBSERVATION is not defined.")
+        self.OBSERVATION_SPACE = self.processor.OBSERVATION_SPACE
+        if self.OBSERVATION_SPACE == nil then
+            self:log_info("OBSERVATION_SPACE is not defined.")
             self:close()
             return
         end
@@ -168,9 +168,9 @@ GymEnv.new = function(log_path)
             gamehash .. ((gamehash == self.processor.HASH) and " match" or (", not match " .. self.processor.HASH)))
         self:log_info("Platform :" .. self.platform)
         self:log_info("Processor:" .. self.processor.NAME)
-        local s = "" .. #self.ACTION .. " "
-        for i = 1, #self.ACTION do
-            s = s .. self.ACTION[i] .. ","
+        local s = "" .. #self.ACTION_SPACE .. " "
+        for i = 1, #self.ACTION_SPACE do
+            s = s .. self.ACTION_SPACE[i] .. ","
         end
         self:log_info("action   :" .. s)
         self:log_info("log      :" .. self.log_path)
@@ -193,19 +193,29 @@ GymEnv.new = function(log_path)
 
         ---- 1st send
         local s = ""
+        -- [0] platform
         s = s .. self.platform .. "|"
-        for i = 1, #self.ACTION do
-            s = s .. self.ACTION[i] .. ","
+        -- [1] action_space
+        for i = 1, #self.ACTION_SPACE do
+            s = s .. self.ACTION_SPACE[i] .. ","
         end
         if self.observation_type == "VALUE" or self.observation_type == "BOTH" then
+            -- [2][3] obs_size, obs_space
             if self.processor["getObservation"] == nil then
                 self:log_info("'getObservation' is not defined for processor. observation_type='value' cannot be used.")
+                self:close()
+                return
             end
             local d = self.processor:getObservation()
-            local obs_len = #d
-            self:log_info("observation: " .. obs_len .. "," .. self.OBSERVATION)
-            s = s .. "|" .. obs_len
-            s = s .. "," .. self.OBSERVATION
+            local obs_size = #d
+            self:log_info("obs size   : " .. obs_size)
+
+            local obs_s = ""
+            for i = 1, #self.OBSERVATION_SPACE do
+                obs_s = obs_s .. self.OBSERVATION_SPACE[i] .. ","
+            end
+            self:log_info("observation: " .. #self.OBSERVATION_SPACE .. " " .. obs_s)
+            s = s .. "|" .. obs_size .. "|" .. obs_s
         end
         self:send(s)
 
@@ -396,12 +406,12 @@ GymEnv.new = function(log_path)
             end
             local acts = split(act_str, " ")
 
-            for i = 1, #self.ACTION do
-                if self.ACTION[i] == "bool" then
+            for i = 1, #self.ACTION_SPACE do
+                if startswith(self.ACTION_SPACE[i], "bool") then
                     acts[i] = (acts[i] == "1" and true or false)
-                elseif startswith(self.ACTION[i], "int") then
+                elseif startswith(self.ACTION_SPACE[i], "int") then
                     acts[i] = tonumber(acts[i])
-                elseif startswith(self.ACTION[i], "float") then
+                elseif startswith(self.ACTION_SPACE[i], "float") then
                     acts[i] = tonumber(acts[i])
                 end
             end
@@ -532,13 +542,13 @@ GymEnv.new = function(log_path)
         local s = ""
         local inv_act = self.processor:getInvalidActions()
         for i = 1, #inv_act do
-            for j = 1, #self.ACTION do
-                if self.ACTION[j] == "bool" then
+            for j = 1, #self.ACTION_SPACE do
+                if startswith(self.ACTION_SPACE[j], "bool") then
                     s = s .. (inv_act[i][j] and "1" or "0") .. ","
-                elseif startswith(self.ACTION[j], "int") then
+                elseif startswith(self.ACTION_SPACE[j], "int") then
                     s = s .. inv_act[i][j] .. ","
-                elseif startswith(self.ACTION[j], "float") then
-                    s = s .. "," -- pass
+                elseif startswith(self.ACTION_SPACE[j], "float") then
+                    s = s .. "," -- not support
                 end
             end
             s = s .. "_"
