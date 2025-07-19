@@ -1,4 +1,30 @@
 
+# v0.3.0
+
+**MainUpdates**
+
+1. 安定動作のためにリファクタリング
+   - [bizhawk][lua] change: runにpcallを追加し、異常終了時にpy側に通知するように修正
+   - [bizhawk] add: 転送に失敗した場合に再送信する機能を追加
+   - [bizhawk] change: 安定のためssをまとめて送らずに個別に変更
+1. [bizhawk] spaceの仕様を変更
+   - [lua] change: ACTION -> ACTION_SPACE, OBSERVATION -> OBSERVATION_SPACEに名前変更
+   - [lua] change: OBSERVATION_SPACEを配列型に変更
+   - SPACEの定義に配列形式の[N]と最後の項目を表す*を追加
+   - [py] change: BizHawkSpacesを作ってencode/decode処理を一か所にまとめた
+   - [doc] change: 合わせてドキュメントを修正
+1. [bizhawk] new: frameskip機能を追加
+1. [bizhawk][lua] change: modeをTRAINからFAST_RUN/RUNにし、emu側のspeedの動作を明確化
+   - [py] change: Typesをenum型からLiteral型に変更
+   - [py] change: SRL時の動作をtraining関係なくFAST_RUNに統一
+1. [lua] change: logを削除しないようにし、utilsにremove_lua_logを追加、手動で削除するように変更
+
+**OtherUpdates**
+
+1. [bizhawk][py] add: SRL用にdisplay_nameを実装
+1. [utils] new: print_loggerを追加
+
+
 # v0.2.2
 
 ・SRLv1.1.1に合わせて修正
