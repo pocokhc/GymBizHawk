@@ -18,6 +18,7 @@
    - [py] change: Typesをenum型からLiteral型に変更
    - [py] change: SRL時の動作をtraining関係なくFAST_RUNに統一
 1. [lua] change: logを削除しないようにし、utilsにremove_lua_logを追加、手動で削除するように変更
+1. [examples] update: SMBは簡単なeasy環境と画像のみの環境を作成
 
 **OtherUpdates**
 
