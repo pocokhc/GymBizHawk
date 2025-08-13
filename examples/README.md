@@ -1,5 +1,4 @@
 
-
 実行サンプルです。
 
 終了条件は指定していません。(doneは必ずFalseになります)
@@ -31,3 +30,14 @@ this.ROM = "起動するROMのパスを設定"
 
 3. "./main.py"をpythonで実行
 
+
+
+# SRL
+
+サンプル内で使われているSRLは別レポジトリで作っている強化学習フレームワークで以下となります。
+
+```
+Sample code running with the reinforcement learning framework SRL
+v1.4.0
+https://github.com/pocokhc/simple_distributed_rl
+```

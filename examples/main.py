@@ -1,23 +1,26 @@
-import logging
 import os
 
 import gymnasium as gym
 
 from gymbizhawk import bizhawk  # noqa F401 # load GymBizhawk env
+from gymbizhawk.utils import print_logger, remove_lua_log
 
-logging.basicConfig(level=logging.INFO)
+print_logger()
 
 
 def main():
     assert "BIZHAWK_DIR" in os.environ
-    assert "ROM_PATH" in os.environ
+    assert "ROM_PATH" in os.environ  # used lua
+
+    # 古いlogを削除
+    remove_lua_log(os.path.dirname(__file__))
 
     env = gym.make(
         "BizHawk-v0",
         bizhawk_dir=os.environ["BIZHAWK_DIR"],
-        lua_file=os.path.join(os.path.dirname(__file__), "../gymbizhawk/sample.lua"),
-        mode="run",  # "run", "train", "debug"
-        observation_type="image",  # "image", "value", "both"
+        lua_file=os.path.join(os.path.dirname(__file__), "sample.lua"),
+        mode="RUN",  # "RUN", "FAST_RUN", "RECORD", "DEBUG"
+        observation_type="IMAGE",  # "VALUE", "IMAGE", "BOTH"
         setup_str_for_lua="1",  # option
     )
     env.reset()
