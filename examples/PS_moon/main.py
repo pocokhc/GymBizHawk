@@ -1,23 +1,23 @@
 import os
 
 import gymnasium as gym
+import moon  # noqa F401  # load env
 
-from gymbizhawk import bizhawk  # noqa F401  # load GymBizhawk env
+from gymbizhawk.utils import print_logger, remove_lua_log
+
+print_logger()
 
 
 def main():
-    assert "BIZHAWK_DIR" in os.environ
-    assert "MOON_PATH" in os.environ
-
+    remove_lua_log(os.path.dirname(__file__))  # 古いlogを削除
     env = gym.make(
-        "BizHawk-v0",
-        bizhawk_dir=os.environ["BIZHAWK_DIR"],
-        lua_file=os.path.join(os.path.dirname(__file__), "moon.lua"),
+        "moon-v0",
+        # mode="debug",
     )
-    env.reset()
 
     done = False
     step = 0
+    env.reset()
     while not done:
         step += 1
         action = env.action_space.sample()

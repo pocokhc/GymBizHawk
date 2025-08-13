@@ -1,3 +1,4 @@
+-- **Set the path to 'bizhawk.lua'**
 package.path = package.path .. ';../../gymbizhawk/bizhawk.lua'
 local bizhawk = require('bizhawk')
 
@@ -35,8 +36,13 @@ EnvProcessor.new = function()
     this.NAME = "moon"
     this.ROM = bizhawk.getenv_safe("MOON_PATH")
     this.HASH = "BF5383C5" -- first ROM version
-    this.ACTION = { "bool" }
-    this.OBSERVATION = "int"
+    this.ACTION_SPACE = {"bool"}
+    this.OBSERVATION_SPACE = {
+        "int -50 50",  -- ay
+        "int -20 260",  -- y
+        "int 0 260",  -- goaly
+        "int -260 260",  -- goaly - y
+    }
 
     this.setup = function(self, env, setup_str)
         self.env = env
@@ -59,6 +65,9 @@ EnvProcessor.new = function()
 
         self:skip_start()
         self.prev_lv = mainmemory.readbyte(0x1119EE)
+        if self.env.mode ~= "FAST_RUN" then
+            self:_displayDraw()
+        end
     end
 
     this.skip_start = function(self)
@@ -77,6 +86,9 @@ EnvProcessor.new = function()
         local y = mainmemory.read_s16_le(0x1119EA)
         local x = mainmemory.read_s16_le(0x1119E8)
         local goal_y = mainmemory.read_s16_le(0x1119EC)
+        if self.env.mode ~= "FAST_RUN" then
+            self:_displayDraw()
+        end
 
         if lv == 6 then
             return 100, true, false
@@ -96,12 +108,12 @@ EnvProcessor.new = function()
             return -10, true, false
         end
 
-        if y - goal_y < -1 then
-            return 0.01, false, false
-        elseif y - goal_y > 3 then
-            return -0.01, false, false
-        else
+        if math.abs(y - goal_y - 2) < 5 then
             return 0.1, false, false
+        elseif math.abs(y - goal_y - 2) < 20 then
+            return 0.01, false, false
+        else
+            return -0.01, false, false
         end
     end
 
@@ -116,6 +128,25 @@ EnvProcessor.new = function()
         d[#d + 1] = goal_y - y
         --d[#d + 1] = mainmemory.readbyte(0x1119EE) -- lv
         return d
+    end
+
+
+    this._displayDraw = function(self)
+        local x = 5
+        local y = 5
+        local dy = 15
+        gui.text(x, y, "prev_lv: " .. self.prev_lv)
+        y = y + dy
+        gui.text(x, y, "lv     : " .. mainmemory.read_s16_le(0x1119EE))
+        y = y + dy
+        gui.text(x, y, "x      : " .. mainmemory.read_s16_le(0x1119E8))
+        y = y + dy
+        gui.text(x, y, "y      : " .. mainmemory.read_s16_le(0x1119EA))
+        y = y + dy
+        gui.text(x, y, "goal y : " .. mainmemory.read_s16_le(0x1119EC))
+        y = y + dy
+        gui.text(x, y, "ay     : " .. mainmemory.read_s16_le(0x1119E6))
+        y = y + dy
     end
 
     return this
