@@ -182,14 +182,24 @@ GymEnv.new = function(log_path)
             client.unpause()
         elseif mode == "RECORD" then
             self:log_info("[RECORD] Reset wait. Run with frameadvance.")
+            client.pause()
         elseif mode == "DEBUG" then
             self:log_info("[DEBUG] Paused. Run with frameadvance.")
+            client.pause()
         else  -- RUN
             client.unpause()
         end
         self:setResetSpeed()
         self.processor:reset()
         self.is_reset = true
+
+        if mode == "RECORD" then
+            self:log_info("[RECORD] Reset wait. Run with frameadvance.")
+            client.pause()
+        elseif mode == "DEBUG" then
+            self:log_info("[DEBUG] Paused. Run with frameadvance.")
+            client.pause()
+        end
 
         ---- 1st send
         local s = ""
