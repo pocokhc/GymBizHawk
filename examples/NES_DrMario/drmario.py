@@ -15,8 +15,12 @@ gymnasium.envs.registration.register(
 
 class DrMarioEnv(BizHawkEnv):
     def __init__(self, level: int = 0, render_mode: str | None = None, **kwargs):
+        assert "BIZHAWK_DIR" in os.environ
+        assert "DRMARIO_PATH" in os.environ  # used lua
+
         super().__init__(
             render_mode,
+            bizhawk_dir=os.environ["BIZHAWK_DIR"],
             lua_file=os.path.join(os.path.dirname(__file__), "drmario.lua"),
             setup_str_for_lua=str(level),
             **kwargs,
@@ -39,8 +43,8 @@ class DrMarioEnv(BizHawkEnv):
             "direction": "",  # 繋がっている方向
         }
 
-    def reset(self):
-        state, info = super().reset()
+    def reset(self, **kwargs):
+        state, info = super().reset(**kwargs)
         state = self._convert_state(state)
         return state, info
 
@@ -111,8 +115,8 @@ class DrMarioEnv(BizHawkEnv):
         valid_actions = []
         for y in range(16):
             for x in range(8):
-                for r in [False, True]:
-                    for c in [False, True]:
+                for r in [0, 1]:
+                    for c in [0, 1]:
                         f = True
                         for inv in invalid_actions:
                             if str([x + 1, y + 1, r, c]) == str(inv):

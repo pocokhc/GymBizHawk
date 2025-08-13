@@ -91,13 +91,15 @@ EnvProcessor.new = function()
     -- r: 1bit, 0: right, 1: up
     -- changeColor: 1bit, 0:False, 1:True
     -- 8*16*2*2 = 9bit = 0x1FF
-    this.ACTION = {
+    this.ACTION_SPACE = {
         "int 1 8",
         "int 1 16",
         "bool",
         "bool",
     }
-    this.OBSERVATION = "int"
+    this.OBSERVATION_SPACE = {
+        "int*",
+    }
 
     this.MAP_W = 8
     this.MAP_H = 16
@@ -118,7 +120,18 @@ EnvProcessor.new = function()
     end
 
     this.reset = function(self)
-        savestate.loadslot(9)
+        client.reboot_core()
+
+        -- skip title
+        for i = 1, 20 do
+            emu.frameadvance()
+        end
+        self.env:setKey("P1 Start")
+        emu.frameadvance()
+        for i = 1, 10 do
+            emu.frameadvance()
+        end
+
         -- select level
         for i = 1, self.level do
             self.env:setKey("P1 Right")
@@ -126,11 +139,13 @@ EnvProcessor.new = function()
             self.env:setKey("")
             emu.frameadvance()
         end
+
         -- rand
         --local r = math.random(1, 100)
         --for i = 1, r do
         --    emu.frameadvance()
         --end
+
         -- start
         self.env:setKey("P1 Start")
         emu.frameadvance()
@@ -141,7 +156,7 @@ EnvProcessor.new = function()
         self:skipToStartScene()
         self:readMap()
         self:_searchValidPos()
-        if self.env.mode ~= "TRAIN" then
+        if self.env.mode ~= "FAST_RUN" then
             gui.clearGraphics()
             -- self:drawBox(1, 1, 0xffffff00, "") -- debug
             self:drawValidPos()
@@ -160,7 +175,7 @@ EnvProcessor.new = function()
         local terminated = false
         local truncated = false
 
-        if self.env.mode ~= "TRAIN" then
+        if self.env.mode ~= "FAST_RUN" then
             -- target pos
             self:drawBox(x, y, 0xffff0000, r)
         end
@@ -172,7 +187,7 @@ EnvProcessor.new = function()
         local result = self:skipToStartScene()
         self:readMap()
         self:_searchValidPos()
-        if self.env.mode ~= "TRAIN" then
+        if self.env.mode ~= "FAST_RUN" then
             gui.clearGraphics()
             self:drawValidPos()
             self:drawMap()
@@ -343,7 +358,7 @@ EnvProcessor.new = function()
         end
 
         --- draw
-        if self.env.mode ~= "TRAIN" then
+        if self.env.mode ~= "FAST_RUN" then
             self:drawBox(goal.x, goal.y, 0xffff0000, goal.r)
         end
 

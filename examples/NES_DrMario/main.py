@@ -1,20 +1,26 @@
 import os
 import random
+from typing import cast
 
 import drmario  # noqa F401 # load drmario env
 import gymnasium as gym
 
+from gymbizhawk.utils import print_logger, remove_lua_log
+
+DEBUG = False
+print_logger("debug" if DEBUG else "info")
+
 
 def main():
-    assert "BIZHAWK_DIR" in os.environ
-    assert "DRMARIO_PATH" in os.environ
-
+    remove_lua_log(os.path.dirname(__file__))  # 古いlogを削除
     env = gym.make(
         "DrMario-v0",
-        bizhawk_dir=os.environ["BIZHAWK_DIR"],
         level=0,
+        mode=("DEBUG" if DEBUG else "RUN"),
     )
     env.reset()
+
+    drmario_env = cast(drmario.DrMarioEnv, env.unwrapped)
 
     done = False
     step = 0
@@ -22,7 +28,7 @@ def main():
         step += 1
 
         # --- 有効なアクションをランダムに作る
-        valid_actions = env.unwrapped.get_valid_actions()
+        valid_actions = drmario_env.get_valid_actions()
         assert len(valid_actions) > 0
         action = random.choice(valid_actions)
         # ---
