@@ -1,20 +1,14 @@
 import os
 
 import gymnasium as gym
+import smb  # noqa F401  # load env
 
-from gymbizhawk import bizhawk  # noqa F401  # load GymBizhawk env
+from gymbizhawk.utils import remove_lua_log
 
 
 def main():
-    assert "BIZHAWK_DIR" in os.environ
-    assert "SMB_PATH" in os.environ
-
-    env = gym.make(
-        "BizHawk-v0",
-        bizhawk_dir=os.environ["BIZHAWK_DIR"],
-        lua_file=os.path.join(os.path.dirname(__file__), "smb.lua"),
-        # mode="debug",
-    )
+    remove_lua_log(os.path.dirname(__file__))  # 古いlogを削除
+    env = gym.make("SMB-easy-v0")
     env.reset()
 
     done = False
@@ -25,8 +19,8 @@ def main():
         observation, reward, terminated, truncated, info = env.step(action)
         done = terminated or truncated
         print(f"--- step {step} ---")
+        print(f"obs({len(observation)}): {observation}")
         print(f"action     : {action}")
-        print(f"obs({len(observation):6d}): {observation}")
         print(f"reward     : {reward}")
         print(f"done       : {done}")
     env.close()

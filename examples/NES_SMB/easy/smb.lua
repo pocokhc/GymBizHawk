@@ -1,4 +1,4 @@
-package.path = package.path .. ';../../gymbizhawk/bizhawk.lua'
+package.path = package.path .. ';../../../gymbizhawk/bizhawk.lua'
 local bizhawk = require('bizhawk')
 
 
@@ -8,10 +8,16 @@ EnvProcessor.new = function()
     this.NAME = "SMB"
     this.ROM = bizhawk.getenv_safe("SMB_PATH")
     this.HASH = "EA343F4E445A9050D4B4FBAC2C77D0693B1D0922"
-    this.ACTION = {
+    this.ACTION_SPACE = {
         "bool", -- a
     }
-    this.OBSERVATION = "int"
+    this.OBSERVATION_SPACE = {
+        "int 0 122",  -- stepout
+        "bool[10]",  -- mario y
+        "bool[9]",  -- mario y speed
+        "bool[40]",  -- mario x speed
+        "bool*",  -- block and enemy
+    }
 
     --- define
     this.W_BLOCKS = 16
@@ -43,7 +49,7 @@ EnvProcessor.new = function()
         self._stepout = 0
 
         self:_read_memory()
-        if self.env.mode ~= "TRAIN" then
+        if self.env.mode ~= "FAST_RUN" then
             self:_displayDraw()
         end
     end
@@ -182,7 +188,7 @@ EnvProcessor.new = function()
         emu.frameadvance()
 
         self:_read_memory()
-        if self.env.mode ~= "TRAIN" then
+        if self.env.mode ~= "FAST_RUN" then
             self:_displayDraw()
         end
 

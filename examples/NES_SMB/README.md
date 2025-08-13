@@ -14,3 +14,16 @@ SMB_PATH   : SMBのROMパスを設定
 
 2. "./main.py"をpythonで実行
 
+
+# env
+
+- easy
+  - Observation: Value
+  - Action: A only (右とBは押しっぱなし)
+
+- image
+  - Observation: image
+  - Action: all
+  - ゴールで100、死亡等で-1、それ以外は0
+
+

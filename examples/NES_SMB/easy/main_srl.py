@@ -1,35 +1,28 @@
-"""
-Sample code running with the reinforcement learning framework SRL
-v1.1.1
-https://github.com/pocokhc/simple_distributed_rl
-"""
-
 import os
 
 import mlflow
+import smb  # noqa F401  # load env
 import srl
 from srl.algorithms import rainbow
 from srl.utils import common
 
-from gymbizhawk import bizhawk  # noqa F401  # load GymBizhawk env
+from gymbizhawk.utils import remove_lua_log
 
-mlflow.set_tracking_uri(os.environ.get("MLFLOW_TRACKING_URI", "mlruns"))
-base_dir = os.path.dirname(__file__)
 common.logger_print()
+base_dir = os.path.dirname(__file__)
+mlflow.set_tracking_uri(os.environ.get("MLFLOW_TRACKING_URI", "mlruns"))
 
 
 def _create_runner():
-    assert "BIZHAWK_DIR" in os.environ
-    assert "SMB_PATH" in os.environ
-
+    remove_lua_log(os.path.dirname(__file__))  # 古いlogを削除
     env_config = srl.EnvConfig(
-        "BizHawk-v0",
+        "SMB-easy-v0",
         kwargs=dict(
-            bizhawk_dir=os.environ["BIZHAWK_DIR"],
-            lua_file=os.path.join(os.path.dirname(__file__), "smb.lua"),
+            frameskip=5,
+            # mode="DEBUG",
         ),
-        frameskip=5,
     )
+
     rl_config = rainbow.Config(
         multisteps=1,
         lr=0.0002,
@@ -50,8 +43,8 @@ def _create_runner():
 
 def train():
     runner = _create_runner()
-    runner.set_progress(env_info=True)
-    runner.set_mlflow(experiment_name="BizHawk-SMB")
+    runner.set_progress(env_info=True, enable_eval=True)
+    runner.set_mlflow()
 
     # runner.train(max_train_count=100)  # debug
     runner.train_mp(actor_num=1, max_train_count=500_000)
@@ -59,7 +52,7 @@ def train():
 
 def eval():
     runner = _create_runner()
-    runner.load_parameter_from_mlflow(experiment_name="BizHawk-SMB")
+    runner.load_parameter_from_mlflow()
     runner.model_summary()
 
     # --- eval
@@ -68,6 +61,7 @@ def eval():
 
     # --- view
     runner.animation_save_gif(os.path.join(base_dir, "_smb.gif"))
+    runner.replay_window()
 
 
 if __name__ == "__main__":
