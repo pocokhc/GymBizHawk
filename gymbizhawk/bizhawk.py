@@ -172,6 +172,7 @@ class BizHawkEnv(gym.Env):
         self.render_mode = render_mode
         self.display_name = display_name
         self.bizhawk = BizHawk(**kwargs)
+        self.metadata["render_fps"] /= kwargs.get("frameskip", 0) + 1
 
         self.bizhawk.boot()
         self.action_space = self.bizhawk.action_space
