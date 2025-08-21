@@ -365,14 +365,6 @@ GymEnv.new = function(log_path)
         comm.socketServerScreenShot()
     end
 
-    this._sendExtendObservtion = function(self, s)
-        if self.observation_type == "VALUE" or self.observation_type == "BOTH" then
-            s = s .. self:_encodeObservation()
-        end
-        self.prev_send_state = s
-        self:send(s)
-    end
-
     -----------------------------------
     -- action
     -----------------------------------
@@ -401,7 +393,13 @@ GymEnv.new = function(log_path)
             end
 
             local s = self:_encodeInvalidActions() .. "|"
-            self:_sendExtendObservtion(s)
+            if self.observation_type == "VALUE" or self.observation_type == "BOTH" then
+                s = s .. self:_encodeObservation()
+            end
+            s = s .. "|" .. self:_encodeInfo()
+            self.prev_send_state = s
+            self:send(s)
+
             return true
         end
 
@@ -459,8 +457,12 @@ GymEnv.new = function(log_path)
             s = s .. "|" .. (terminated and "1" or "0")
             s = s .. "|" .. (truncated and "1" or "0")
             s = s .. "|"
-            self:_sendExtendObservtion(s)
-
+            if self.observation_type == "VALUE" or self.observation_type == "BOTH" then
+                s = s .. self:_encodeObservation()
+            end
+            s = s .. "|" .. self:_encodeInfo()
+            self.prev_send_state = s
+            self:send(s)
             return true
         end
 
@@ -536,6 +538,19 @@ GymEnv.new = function(log_path)
                 s = s .. " " .. d[i]
             end
         end
+        return s
+    end
+
+    this._encodeInfo = function(self)
+        if self.processor.getInfo == nil then
+            return ""
+        end
+        local d = self.processor:getInfo()
+        local parts = {}
+        for key, value in pairs(d) do
+            table.insert(parts, key .. ":" .. value)
+        end
+        local s = table.concat(parts, "#")  -- keyと被らないのが理想
         return s
     end
 

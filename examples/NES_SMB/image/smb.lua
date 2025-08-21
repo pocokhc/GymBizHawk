@@ -38,6 +38,8 @@ EnvProcessor.new = function()
             emu.frameadvance()
         end
 
+        self._max_stage_mario_x = 0
+
         if self.env.mode ~= "FAST_RUN" then
             self:_displayDraw()
         end
@@ -72,6 +74,12 @@ EnvProcessor.new = function()
             self:_displayDraw()
         end
 
+        -- info
+        local stage_mario_x = mainmemory.readbyte(0x6D) * 0x100 + mainmemory.readbyte(0x86)
+        if stage_mario_x > self._max_stage_mario_x then
+            self._max_stage_mario_x = stage_mario_x
+        end
+
         -- goal
         if mainmemory.readbyte(0xE) == 0x4 then
             return 100, true, false
@@ -100,9 +108,11 @@ EnvProcessor.new = function()
 
     this.backup = function(self)
         local d = {}
+        d["max_x"] = self._max_stage_mario_x
         return d
     end
     this.restore = function(self, d)
+        self._max_stage_mario_x = d["max_x"]
     end
 
     this.getObservation = function(self)
@@ -110,6 +120,12 @@ EnvProcessor.new = function()
         return d
     end
 
+    this.getInfo = function(self)
+        local d = {}
+        d["max_x"] = self._max_stage_mario_x
+        return d
+    end
+    
     return this
 end
 

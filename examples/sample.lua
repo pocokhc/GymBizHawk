@@ -70,21 +70,25 @@ EnvProcessor.new = function()
         return 0, false, false
     end
 
-    -- option
-    --   return observation values(list)
+    -- [option] return observation values(list)
     this.getObservation = function(self)
         local d = {}
         return d
     end
 
-    -- option
-    --   return list[self.ACTION_SPACE list]
+    -- [option] return info(dict)
+    this.getInfo = function(self)
+        local d = {}
+        return d
+    end
+    
+    -- [option] return list[self.ACTION_SPACE list]
     this.getInvalidActions = function(self)
         local d = {}
         return d
     end
 
-    -- backup/restore option
+    -- [option] backup/restore
     this.backup = function(self)
         local d = {}
         return d

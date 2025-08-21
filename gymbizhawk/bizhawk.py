@@ -186,12 +186,13 @@ class BizHawkEnv(gym.Env):
 
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
         super().reset(seed=seed)
-        state = self.bizhawk.reset()
-        return state, {}
+        state, info = self.bizhawk.reset()
+        return state, info
 
     def step(self, action: list):
-        state, reward, terminated, truncated = self.bizhawk.step(action)
-        return state, reward, terminated, truncated, {"backup": self.backup_count}
+        state, reward, terminated, truncated, info = self.bizhawk.step(action)
+        info["backup"] = self.backup_count
+        return state, reward, terminated, truncated, info
 
     def render(self):  # super
         if self.render_mode != "rgb_array":
@@ -417,7 +418,7 @@ class BizHawk:
         self.send("screenshot")
         return self._recv_screenshot(resize_shape)
 
-    def _recv_extend_observation(self, obs_str):
+    def _decode_observation(self, obs_str: str):
         img = None
         if self.observation_type == "VALUE" or self.observation_type == "BOTH":
             obs = self.obs_emu_spaces.decode_obs(obs_str)
@@ -436,6 +437,19 @@ class BizHawk:
             state = [img, obs]
         return state, img
 
+    def _decode_info(self, info_str: str):
+        info = {}
+        for pair in info_str.strip().split("#"):
+            d = pair.strip().split(":")
+            if len(d) != 2:
+                continue
+            try:
+                info[d[0]] = float(d[1])
+            except ValueError:
+                logger.debug(f"float fail: {d}")
+                continue
+        return info
+
     # -----------------------------
     # gym
     # -----------------------------
@@ -448,9 +462,10 @@ class BizHawk:
             try:
                 recv_str_list = self.recv(enable_split=True)
                 self.invalid_actions = self.action_emu_spaces.decode_invalid_actions(recv_str_list[0])
-                state, img = self._recv_extend_observation(recv_str_list[1])
+                state, img = self._decode_observation(recv_str_list[1])
                 self.step_img = img
-                return state
+                info = self._decode_info(recv_str_list[2])
+                return state, info
             except ReciveError:
                 logger.info(f"resend: {i + 1}")
                 self.send("resend")
@@ -472,9 +487,10 @@ class BizHawk:
                 reward = float(recv_str_list[1])
                 terminated = True if recv_str_list[2] == "1" else False
                 truncated = True if recv_str_list[3] == "1" else False
-                state, img = self._recv_extend_observation(recv_str_list[4])
+                state, img = self._decode_observation(recv_str_list[4])
                 self.step_img = img
-                return state, reward, terminated, truncated
+                info = self._decode_info(recv_str_list[5])
+                return state, reward, terminated, truncated, info
             except ReciveError:
                 logger.info(f"resend: {i + 1}")
                 self.send("resend")

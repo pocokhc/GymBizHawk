@@ -10,7 +10,7 @@ print_logger()
 
 def main():
     remove_lua_log(os.path.dirname(__file__))  # 古いlogを削除
-    env = gym.make("SMB-image-v0")
+    env = gym.make("SMB-image-v0", mode="debug")
     env.reset()
 
     done = False
@@ -25,6 +25,7 @@ def main():
         print(f"obs    : {observation.shape}")
         print(f"reward : {reward}")
         print(f"done   : {done}")
+        print(f"info   : {info}")
     env.close()
 
 
