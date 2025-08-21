@@ -25,6 +25,7 @@
     "[lua]": {
         "editor.formatOnSave": true
     },
+    "Lua.diagnostics.globals": ["comm", "emu", "client", "gameinfo", "savestate", "joypad", "mainmemory", "gui"],
 
     // --- plant uml
     "plantuml.exportFormat": "png",
