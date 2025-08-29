@@ -24,7 +24,7 @@ gymnasium.envs.registration.register(
 
 
 ModeTypes = Literal["RUN", "FAST_RUN", "RECORD", "DEBUG"]
-ObservationTypes = Literal["VALUE", "IMAGE", "BOTH"]
+ObservationTypes = Literal["VALUE", "IMAGE", "BOTH", "RAM"]
 
 
 class BizHawkError(Exception):
@@ -359,6 +359,10 @@ class BizHawk:
             obs_size = int(d[2].strip())
             self.obs_emu_spaces = BizHawkSpaces(d[3], size=obs_size)
             logger.info(f"observation: {obs_size}, {self.obs_emu_spaces.emu_types}")
+        elif self.observation_type == "RAM":
+            # [2] memory_size
+            memory_size = int(d[2].strip())
+
         self.invalid_actions = []
 
         # 画像情報を取得
@@ -371,6 +375,8 @@ class BizHawk:
             self.observation_space: gym.spaces.Space = self.obs_emu_spaces.get_gym_space()
         elif self.observation_type == "IMAGE":
             self.observation_space: gym.spaces.Space = gym.spaces.Box(0, 255, shape=self.image_shape, dtype=np.uint8)
+        elif self.observation_type == "RAM":
+            self.observation_space: gym.spaces.Space = gym.spaces.MultiDiscrete([255] * memory_size, dtype=np.uint8)
         elif self.observation_type == "BOTH":
             obs_spaces = self.obs_emu_spaces.gym_spaces[:]
             obs_spaces.insert(0, gym.spaces.Box(0, 255, shape=self.image_shape, dtype=np.uint8))
@@ -423,6 +429,9 @@ class BizHawk:
         if self.observation_type == "VALUE" or self.observation_type == "BOTH":
             obs = self.obs_emu_spaces.decode_obs(obs_str)
             logger.debug(f"{self._send_count} obs: {str(obs):100s}")
+        elif self.observation_type == "RAM":
+            state = self._decode_ram(obs_str)
+            logger.debug(f"{self._send_count} obs: {str(state):100s}")
 
         if self.observation_type == "IMAGE" or self.observation_type == "BOTH":
             # ssを取得する
@@ -436,6 +445,17 @@ class BizHawk:
         elif self.observation_type == "BOTH":
             state = [img, obs]
         return state, img
+
+    def _decode_ram(self, ram_str: str):
+        mem: List[int] = []
+        for bin in ram_str.strip().split(" "):
+            try:
+                n = int(bin.strip())
+            except ValueError:
+                logger.debug(f"int fail: {n}")
+                n = 0
+            mem.append(n)
+        return mem
 
     def _decode_info(self, info_str: str):
         info = {}

@@ -17,11 +17,10 @@ EnvProcessor.new = function()
     }
     this.OBSERVATION_SPACE = {}
 
-
     this.setup = function(self, env, setup_str)
         self.env = env
-        if self.env.observation_type ~= "IMAGE" then
-            error("observation_type is IMAGE only")
+        if self.env.observation_type ~= "IMAGE" and self.env.observation_type ~= "RAM" then
+            error("observation_type must be IMAGE or RAM")
         end
     end
 
@@ -100,7 +99,7 @@ EnvProcessor.new = function()
         --- time
         local time = mainmemory.readbyte(0x7F8)*100 + mainmemory.readbyte(0x7F9)*10 + mainmemory.readbyte(0x7FA)
         if time == 0 then
-            return -1, true, false
+            return 0, true, false
         end
 
         return 0, false, false

@@ -226,6 +226,9 @@ GymEnv.new = function(log_path)
             end
             self:log_info("observation: " .. #self.OBSERVATION_SPACE .. " " .. obs_s)
             s = s .. "|" .. obs_size .. "|" .. obs_s
+        elseif self.observation_type == "RAM" then
+            -- [2] memory_size
+            s = s .. "|" .. mainmemory.getcurrentmemorydomainsize()
         end
         self:send(s)
 
@@ -395,6 +398,8 @@ GymEnv.new = function(log_path)
             local s = self:_encodeInvalidActions() .. "|"
             if self.observation_type == "VALUE" or self.observation_type == "BOTH" then
                 s = s .. self:_encodeObservation()
+            elseif self.observation_type == "RAM" then
+                s = s .. self:_encodeRAM()
             end
             s = s .. "|" .. self:_encodeInfo()
             self.prev_send_state = s
@@ -459,6 +464,8 @@ GymEnv.new = function(log_path)
             s = s .. "|"
             if self.observation_type == "VALUE" or self.observation_type == "BOTH" then
                 s = s .. self:_encodeObservation()
+            elseif self.observation_type == "RAM" then
+                s = s .. self:_encodeRAM()
             end
             s = s .. "|" .. self:_encodeInfo()
             self.prev_send_state = s
@@ -526,7 +533,6 @@ GymEnv.new = function(log_path)
         return true
     end
 
-
     this._encodeObservation = function(self)
         -- "s1 s2 s3 s4" スペース区切り
         local d = self.processor:getObservation()
@@ -536,6 +542,20 @@ GymEnv.new = function(log_path)
                 s = s .. d[i]
             else
                 s = s .. " " .. d[i]
+            end
+        end
+        return s
+    end
+
+    this._encodeRAM = function(self)
+        -- スペース区切り
+        local mem = mainmemory.read_bytes_as_array(0, mainmemory.getcurrentmemorydomainsize())
+        local s = ""
+        for i = 1, #mem do
+            if i == 1 then
+                s = s .. mem[i]
+            else
+                s = s .. " " .. mem[i]
             end
         end
         return s
