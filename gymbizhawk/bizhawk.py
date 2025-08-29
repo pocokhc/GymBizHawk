@@ -407,8 +407,11 @@ class BizHawk:
         img_raw = self.server.recv(enable_decode=False)
         if img_raw is None:
             raise BizHawkError("image recv fail")
+        img_raw = cast(bytes, img_raw)
         img_arr = np.frombuffer(img_raw, dtype=np.uint8)
         img = cv2.imdecode(img_arr, cv2.IMREAD_COLOR)
+        if img is None:
+            raise ValueError("Failed to decode image.")
         if (self.image_shape != (0, 0)) and (img.shape[:1] != self.image_shape[:1]):
             img = cv2.resize(img, (self.image_shape[1], self.image_shape[0]))
         if resize_shape is None or img.shape == resize_shape:
