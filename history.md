@@ -1,4 +1,12 @@
 
+# v0.3.1
+
+**MainUpdates**
+
+1. [gymbizhawk] new: info情報を追加
+1. [gymbizhawk] new: メモリ情報を状態で送るRAMモードを作成
+
+
 # v0.3.0
 
 **MainUpdates**
